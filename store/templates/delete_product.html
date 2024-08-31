@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Futa Bidhaa{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h3 class="text-center text-white">Futa Bidhaa</h3>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+<p>Je, una uhakika unataka kufuta bidhaa hii: {{ product.name }}?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Ndiyo, Futa</button>
+    <a href="{% url 'product_list' %}" class="btn btn-warning">Hapana, Rudi</a>
+</form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

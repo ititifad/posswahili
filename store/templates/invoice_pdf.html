@@ -1,0 +1,114 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Invoice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .invoice-header {
+            background-color: #8E6CA0;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .invoice-header h1 {
+            margin: 0;
+        }
+        
+        .store-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #8E6CA0;
+            color: #ffffff;
+            font-weight: bolder;
+        }
+        
+        .paid-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            color: green;
+            opacity: 0.5;
+            z-index: -1;
+        }
+        
+        .not-paid-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 100px;
+            color: red;
+            opacity: 0.5;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-header">
+        <div class="store-name">Merisha Point</div>
+        <h1>Invoice #: {{sale.id}}</h1>
+    </div>
+    
+    <p>Tarehe: {{ sale.date }}</p>
+    <p>Mteja: {{ sale.customer.name }}</p>
+    <p>Malipo: {{ sale.get_payment_type_display }}</p>
+
+    <h2>Bidhaa Zilizonunuliwa:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Bidhaa</th>
+                <th>Idadi</th>
+                <th>Bei</th>
+                <th>Jumla</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in sale_items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unit_price|intcomma }}</td>
+                <td>{{ item.total_price|intcomma }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p>Jumla: {{ sale.total_amount|intcomma }}</p>
+    <p>Punguzo: {{ sale.discount|intcomma }}</p>
+    <p>Jumla baada ya punguzo: {{ sale.final_amount|intcomma }}</p>
+    
+    {% if sale.payment_type == 'cash' %}
+    <div class="paid-watermark">IMELIPWA</div>
+    {% else %}
+    <div class="not-paid-watermark">HAIJALIPWA</div>
+    {% endif %}
+</body>
+</html>

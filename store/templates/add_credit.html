@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Ongeza Mikopo{% endblock %}
+
+{% block content %}
+<div class="credit-form-container">
+    <div class="form-header">
+        <h2>Ongeza Mikopo</h2>
+    </div>
+    <form method="post" class="credit-form">
+        {% csrf_token %}
+        <div class="form-group">
+            {{ form.creditor.label_tag }}
+            {{ form.creditor }}
+        </div>
+        <div class="form-group checkbox-group">
+            {{ form.create_new_creditor }}
+            {{ form.create_new_creditor.label_tag }}
+        </div>
+        <div id="new-creditor-fields" class="hidden">
+            <div class="form-group">
+                {{ form.creditor_name.label_tag }}
+                {{ form.creditor_name }}
+            </div>
+            <div class="form-group">
+                {{ form.creditor_phone_number.label_tag }}
+                {{ form.creditor_phone_number }}
+            </div>
+        </div>
+        <div class="form-group">
+            {{ form.amount.label_tag }}
+            {{ form.amount }}
+        </div>
+        <div class="form-group">
+            {{ form.description.label_tag }}
+            {{ form.description }}
+        </div>
+        <button type="submit" class="submit-btn">Hifadhi</button>
+    </form>
+</div>
+
+<style>
+    .credit-form-container {
+        max-width: 700px;
+        margin: 2rem auto;
+        background: linear-gradient(145deg, #ffffff, #ffffff);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: #493A66;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .form-header h2 {
+        margin: 0;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .credit-form {
+        padding: 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.50rem;
+        border: 1px solid #a5a5a5;
+        border-radius: 5px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group input[type="number"]:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #ffffff;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        margin-right: 0.5rem;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .submit-btn {
+        display: block;
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(45deg, #2ecc71, #27ae60);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: background 0.3s ease, transform 0.1s ease;
+    }
+
+    .submit-btn:hover {
+        background: linear-gradient(45deg, #27ae60, #2ecc71);
+    }
+
+    .submit-btn:active {
+        transform: translateY(2px);
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkbox = document.querySelector('input[name="create_new_creditor"]');
+        const newCreditorFields = document.getElementById('new-creditor-fields');
+        checkbox.addEventListener('change', function () {
+            newCreditorFields.classList.toggle('hidden', !checkbox.checked);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Taarifa za Mauzo{% endblock %}
+
+{% block content %}
+<div class="container mt-3 mb-4">
+    <h1 class="text-center text-white">Taarifa ya Mauzo</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+
+<p>Tarehe: {{ sale.date }}</p>
+<p>Mteja: {{ sale.customer.name }}</p>
+<p>Aina ya Malipo: {{ sale.get_payment_type_display }}</p>
+
+<!-- Button to generate PDF -->
+<a href="{% url 'generate_pdf_invoice' sale.id %}" class="btn btn-primary">Print Invoice <i class="fas fa-print"></i></a>
+<!-- WhatsApp share button -->
+
+
+<hr>
+<h2>Bidhaa Zilizonunuliwa:</h2>
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>Bidhaa</th>
+            <th>Idadi</th>
+            <th>Bei</th>
+            <th>Jumla</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in sale.items.all %}
+        <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit_price|intcomma }}</td>
+            <td>{{ item.total_price|intcomma }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Displaying the total amount before discount -->
+<p>Jumla ya Mauzo: {{ sale.total_amount|intcomma }}</p>
+
+<!-- Displaying the discount applied -->
+<p>Punguzo: {{ sale.discount|intcomma }}</p>
+
+<!-- Displaying the final amount after discount -->
+<p>Jumla ya Mauzo Baada ya Punguzo: {{ sale.final_amount|intcomma }}</p>
+
+<a href="{% url 'sale_list' %}" class="btn btn-warning">Rudi kwenye Orodha ya Mauzo</a>
+                </div>
+            </div>
+        </div>
+        </div>
+</div>
+
+<script>
+    document.getElementById('shareWhatsApp').addEventListener('click', function() {
+        var saleId = this.getAttribute('data-sale-id');
+        
+        // First, generate the PDF
+        fetch(`/generate_pdf_invoice/${saleId}/`)
+            .then(response => response.json())
+            .then(data => {
+                // Then, get the WhatsApp share link
+                return fetch(`/share_invoice_whatsapp/${saleId}/`);
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Open WhatsApp in a new window
+                window.open(data.whatsapp_link, '_blank');
+            })
+            .catch(error => console.error('Error:', error));
+    });
+    </script>
+{% endblock %}

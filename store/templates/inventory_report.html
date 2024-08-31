@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Ripoti ya Bidhaa{% endblock %}
+
+{% block content %}
+<h1>Ripoti ya Bidhaa</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Jina</th>
+            <th>Kiasi</th>
+            <th>Bei ya Kununua</th>
+            <th>Bei ya Kuuza</th>
+            <th>Thamani ya Jumla</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.quantity }}</td>
+            <td>{{ product.purchase_price }}</td>
+            <td>{{ product.selling_price }}</td>
+            <td>{{ product.quantity|mul:product.purchase_price }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

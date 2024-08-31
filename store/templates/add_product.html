@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Ongeza Bidhaa{% endblock %}
+
+{% block content %}
+<style>
+  textarea {
+    background-color: rgb(230, 230, 55);
+  }
+</style>
+<div class="container mt-3 mb-4">
+    <h3 class="text-center text-white">Ongeza Bidhaa</h3>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="row mb-4">
+        <div class="col">
+          <label class="form-label" for="form3Example1">Andika Jina la Bidhaa</label>
+          <div data-mdb-input-init class="form-outline bg-light">
+            <input type="text" id="form3Example1" name="name" class="form-control" required/>
+            
+          </div>
+        </div>
+        <div class="col">
+          <label class="form-label" for="form3Example2">Andika Idadi</label>
+          <div data-mdb-input-init class="form-outline bg-light">
+            <input type="number" id="form3Example2" name="quantity" class="form-control" required/>
+            
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col">
+          <label class="form-label" for="form3Example3">Bei ya kununua</label>
+          <div data-mdb-input-init class="form-outline bg-light">
+            <input type="number" id="form3Example3" name="purchase_price" class="form-control" required/>
+            
+          </div>
+        </div>
+        <div class="col">
+          <label class="form-label" for="form3Example4">Bei ya kuuza</label>
+          <div data-mdb-input-init class="form-outline bg-light">
+            <input type="number" id="form3Example4" name="selling_price" class="form-control" required/>
+            
+          </div>
+        </div>
+      </div>
+      <!-- Category Field (Foreign Key) -->
+      <div class="form-outline mb-4">
+        <select id="{{ form.category.id_for_label }}" name="{{ form.category.html_name }}" class="form-select">
+            <option value="" selected>Chagua Kundi la bidhaa</option>
+            {% for category in form.category.field.queryset %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+        </select>
+        
+    </div>
+
+    <!-- New Category Field -->
+    <div data-mdb-input-init class="form-outline mb-4">
+        <input type="text" id="{{ form.new_category.id_for_label }}" name="{{ form.new_category.html_name }}" class="form-control" />
+        <label class="form-label" for="{{ form.new_category.id_for_label }}">Tengeneza kundi (sio lazima)</label>
+    </div>
+
+    <!-- Package Field -->
+<div data-mdb-input-init class="form-outline mb-4">
+  <select id="{{ form.package.id_for_label }}" name="{{ form.package.html_name }}" class="form-select">
+      <option value="" selected disabled>Chagua package ya bidhaa (sio lazima)</option>
+      {% for value, label in form.package.field.choices %}
+          <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+  </select>
+  
+</div>
+
+<!-- Description Field -->
+<div data-mdb-input-init class="form-outline mb-4 bg-light">
+    <textarea id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}" class="form-control" rows="4"></textarea>
+    <label class="form-label" for="{{ form.description.id_for_label }}">Maelezo ya bidhaa (sio lazima)</label>
+</div>
+    <!-- {{form|crispy}} -->
+    <button type="submit" class="btn btn-info">Hifadhi</button>
+</form>
+</div>
+</div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var categoryField = document.getElementById('id_category');
+        var newCategoryField = document.getElementById('id_new_category');
+
+        categoryField.addEventListener('change', function() {
+            if (this.value) {
+                newCategoryField.disabled = true;
+            } else {
+                newCategoryField.disabled = false;
+            }
+        });
+
+        newCategoryField.addEventListener('input', function() {
+            if (this.value) {
+                categoryField.disabled = true;
+            } else {
+                categoryField.disabled = false;
+            }
+        });
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Ripoti ya Matumizi{% endblock %}
+
+{% block content %}
+<h1>Ripoti ya Matumizi</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Tarehe</th>
+            <th>Maelezo</th>
+            <th>Kiasi</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for expense in expenses %}
+        <tr>
+            <td>{{ expense.date }}</td>
+            <td>{{ expense.description }}</td>
+            <td>{{ expense.amount }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

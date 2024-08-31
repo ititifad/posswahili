@@ -1,0 +1,17 @@
+{
+  "name": "Merisha Point",
+  "short_name": "M-Point",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "/static/images/icons/accounting.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
+  

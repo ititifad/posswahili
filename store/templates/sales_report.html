@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Ripoti ya Mauzo{% endblock %}
+
+{% block content %}
+<h1>Ripoti ya Mauzo</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Tarehe</th>
+            <th>Mteja</th>
+            <th>Aina ya Malipo</th>
+            <th>Jumla</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sale in sales %}
+        <tr>
+            <td>{{ sale.date }}</td>
+            <td>{{ sale.customer.name }}</td>
+            <td>{{ sale.get_payment_type_display }}</td>
+            <td>{{ sale.total_amount }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

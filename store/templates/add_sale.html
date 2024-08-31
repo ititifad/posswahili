@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container my-3">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h1 class="card-title text-center mb-4">Rekodi Mauzo</h1>
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Mteja (si lazima)</h2>
+                    {{ sale_form.customer|as_crispy_field }}
+                </div>
+                
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Tarehe ya mauzo</h2>
+                    {{ sale_form.date|as_crispy_field }}
+                </div>
+                
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Bidhaa za oda</h2>
+                    {{ item_formset.management_form }}
+                    <div id="item-formset" class="mb-3">
+                        {% for form in item_formset %}
+                        <div class="item-form row align-items-end">
+                            <div class="col">
+                                <!-- Custom select tag for products -->
+                                <select name="form-{{ forloop.counter0 }}-product" class="form-control select2">
+                                    {% for product in form.fields.product.queryset %}
+                                        <option value="{{ product.id }}" {% if form.product.value == product.id %}selected{% endif %}>
+                                            {{ product.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col">
+                                {{ form.quantity|as_crispy_field }}
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-sm btn-danger remove-item">
+                                    <i class="fa fa-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" id="add-item" class="btn btn-success">
+                        <i class="fa fa-plus" aria-hidden="true"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Weka discount (Punguzo)</h2>
+                    {{ sale_form.discount|as_crispy_field }}
+                </div>
+                
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Weka maelezo ya ziada</h2>
+                    {{ sale_form.notes|as_crispy_field }}
+                </div>
+                
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Aina ya malipo</h2>
+                    {{ sale_form.payment_type|as_crispy_field }}
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg">Hifadhi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize Select2 on existing product fields
+        $('.select2').select2();
+
+        // Add new item form and initialize Select2
+        $('#add-item').click(function() {
+            var formCount = parseInt($('#id_form-TOTAL_FORMS').val());
+            var newForm = $('.item-form:first').clone(true); // Clone the first form
+            
+            // Clear the values in the cloned form
+            newForm.find('select').val(null).trigger('change'); // Reset the select2 field
+            newForm.find('input[type="number"]').val(''); // Reset quantity input
+            
+            // Update the form indices
+            newForm.html(newForm.html().replace(/form-(\d+)-/g, 'form-' + formCount + '-'));
+            $('#item-formset').append(newForm);
+            $('#id_form-TOTAL_FORMS').val(formCount + 1);
+
+            // Reinitialize Select2 on the new product field
+            newForm.find('.select2').select2();
+        });
+
+        // Remove item form
+        $('#item-formset').on('click', '.remove-item', function() {
+            $(this).closest('.item-form').remove();
+            // Update the total forms count after removing
+            var formCount = $('#item-formset .item-form').length;
+            $('#id_form-TOTAL_FORMS').val(formCount);
+        });
+    });
+</script>
+{% endblock %}

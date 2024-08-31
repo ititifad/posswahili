@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Orodha ya Madeni{% endblock %}
+
+{% block content %}
+
+<div class="container mt-3 mb-4">
+<h1 class="text-center text-white">Taarifa ya Madeni</h1>
+    <!-- Filters -->
+    <form method="get" class="mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <select id="selectedProducts" name="customer"  class="form-select">
+                    <option value="">Chagua Mteja</option>
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if customer.id|stringformat:"s" == selected_customer %}selected{% endif %}>
+                            {{ customer.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="time_filter" class="form-select">
+                    <option value="">Chagua Kipindi</option>
+                    <option value="daily" {% if selected_time_filter == 'daily' %}selected{% endif %}>Leo</option>
+                    <option value="weekly" {% if selected_time_filter == 'weekly' %}selected{% endif %}>Wiki</option>
+                    <option value="monthly" {% if selected_time_filter == 'monthly' %}selected{% endif %}>Mwezi</option>
+                    <option value="yearly" {% if selected_time_filter == 'yearly' %}selected{% endif %}>Mwaka</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Chakata</button>
+            </div>
+        </div>
+    </form>
+
+<div class="row">
+    <!-- Products Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100" style="background-color: #F4DEB3;">
+            <div class="card-body text-center">
+                <p><small>Wateja Wanaodaiwa</small></p>
+                <h6 class="card-title">{{ total_customers_owed }}</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100"  style="background-color: #B4D6CD;">
+            <div class="card-body text-center">
+                <p><small>Jumla ya Madeni</small></p>
+                <h6 class="card-title">{{ total_debt|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Credits Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100" style="background-color: #F0EAAC;">
+            <div class="card-body text-center">
+                <p><small>Jumla ya Malipo</small></p>
+                <h6 class="card-title">{{ total_amount_paid|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+    <!-- Credits Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100" style="background-color: #CCE0AC;">
+            <div class="card-body text-center">
+                <p><small>Jumla Iliyobaki</small></p>
+                <h6 class="card-title">{{ total_remaining_amount|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+</div>
+<table class="table align-middle mb-0 bg-white table-bordered table-sm">
+    <thead class="table-success">
+        <tr><th>#</th>
+            <th>Mteja</th>
+            <th>Tarehe</th>
+            <th>Kiasi cha Awali</th>
+            <th>Kiasi kilicholipwa</th>
+            <th>Kiasi Kilichobaki</th>
+            <th>Vitendo</th>
+        </tr>
+    </thead>
+    <tbody class="table-white">
+        {% for debt in debts %}
+        <tr>
+            <th>{{forloop.counter}}</th>
+            <td>{{ debt.customer.name }}</td>
+            <td>{{ debt.sale.date|date:"d/m/Y" }}</td>
+            <td>{{ debt.amount|intcomma }}</td>
+            <td>{{ debt.paid_amount|intcomma }}</td>
+            <td>{{ debt.remaining_amount|intcomma }}</td>
+            <td>
+                <a href="{% url 'add_debt_payment' debt.id %}" class="btn btn-success btn-sm rounded-pill me-2">Lipa</a>
+                <a href="{% url 'view_debt' debt.id %}" class="btn btn-info btn-sm rounded-pill me-2">Fungua</a>
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+    // Initialize Select2 for the custom select menu
+    $(document).ready(function() {
+      $('#selectedProducts').select2();
+    });
+    
+    // Rest of your JavaScript code...
+  </script>
+{% endblock %}

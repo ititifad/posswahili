@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Futa Mdai{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center text-white">Futa Mdai</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+<p>Je, una uhakika unataka kufuta mdai huyu: {{ creditor.name }}?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Ndiyo, Futa</button>
+    <a href="{% url 'creditor_list' %}" class="btn btn-warning">Hapana, Rudi</a>
+</form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

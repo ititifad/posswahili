@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Taarifa za Mkopo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center text-white">Taarifa za Mkopo</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+<p>Mdai: {{ credit.creditor.name }}</p>
+<p>Kiasi cha Awali: {{ credit.amount|intcomma }}</p>
+<p>Kiasi Kilichobaki: {{ credit.remaining_amount|intcomma }}</p>
+<p>Maelezo: {{ credit.description }}</p>
+<h2>Malipo:</h2>
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>Tarehe</th>
+            <th>Kiasi</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for payment in payments %}
+        <tr>
+            <td>{{ payment.date }}</td>
+            <td>{{ payment.amount|intcomma }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{% url 'credit_list' %}" class="btn btn-warning btn-sm">Rudi kwenye Orodha ya Mikopo</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

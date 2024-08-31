@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Futa Matumizi{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center text-white">Futa Matumizi</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+<h1>Futa Matumizi</h1>
+<p>Je, una uhakika unataka kufuta matumizi haya?</p>
+<p><strong>Maelezo:</strong> {{ expense.description }}</p>
+<p><strong>Kiasi:</strong> {{ expense.amount }}</p>
+<p><strong>Tarehe:</strong> {{ expense.date }}</p>
+<form method="post">
+    {% csrf_token %}
+  
+    <button type="submit" class="btn btn-danger">Ndiyo, Futa</button>
+    <a href="{% url 'expense_list' %}" class="btn btn-warning">Hapana, Rudi</a>
+</form>
+
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}

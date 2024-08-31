@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Ongeza Bidhaa kwenye Mauzo{% endblock %}
+
+{% block content %}
+<h1>Ongeza Bidhaa kwenye Mauzo</h1>
+<h2>Mauzo ya {{ sale.customer.name }} - {{ sale.date|date:"d/m/Y H:i" }}</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Ongeza Bidhaa</button>
+</form>
+
+<h3>Bidhaa zilizochaguliwa:</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Bidhaa</th>
+            <th>Kiasi</th>
+            <th>Bei</th>
+            <th>Jumla</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in sale_items %}
+        <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.price }}</td>
+            <td>{{ item.total_price }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="">Maliza Mauzo</a>
+{% endblock %}

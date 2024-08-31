@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<style>
+    body {
+        background-color: #493a66;
+        color: #ffffff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .dashboard-container {
+        background-color: rgba(255, 223, 214, 0.1);
+        border-radius: 15px;
+        padding: 20px;
+    }
+    .card {
+        background-color: rgba(227, 165, 199, 0.2);
+        border: none;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+    .card-header {
+        background-color: rgba(182, 146, 194, 0.5);
+        color: #ffffff;
+        border-bottom: none;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+    .card-body {
+        color: #FFDFD6;
+    }
+    h1, h2 {
+        color: gold;
+        /* text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); */
+    }
+    .quick-link-icon {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        color: gold;
+    }
+
+    a {
+  color: rgb(255, 255, 255);
+  font-size: 16px;
+}
+    .quick-link-title {
+        color: #ffffff;
+    }
+    hr {
+        border-color: #ffffff;
+    }
+
+    .card-title{
+        color: #ffffff;
+    }
+</style>
+
+<div class="container-fluid mt-4 dashboard-container">
+    <h1 class="text-center mb-4"><i class="fas fa-microchip"></i> Merisha Point</h1>
+    <h2 class="mb-3"><i class="fas fa-link"></i> Quick Links</h2>
+    <div class="row mb-4">
+        
+        
+        <div class="col-md-2 col-sm-4 mb-3">
+            <a href="{% url 'product_list' %}">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-box quick-link-icon"></i>
+                        <h5 class="quick-link-title">Bidhaa</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-md-2 col-sm-4 mb-3">
+            <a href="{% url 'sale_list' %}" class="text-decoration-none">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fa-solid fa-cart-plus quick-link-icon"></i>
+                        <h5 class="quick-link-title">Mauzo</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-md-2 col-sm-4 mb-3">
+            <a href="{% url 'expense_list' %}" class="text-decoration-none">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-money-bill-wave quick-link-icon"></i>
+                        <h5 class="quick-link-title">Matumizi</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-md-2 col-sm-4 mb-3">
+            <a href="{% url 'debt_list' %}" class="text-decoration-none">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-hand-holding-usd quick-link-icon"></i>
+                        <h5 class="quick-link-title">Unaowadai</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-md-2 col-sm-4 mb-3">
+            <a href="{% url 'credit_list' %}" class="text-decoration-none">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-credit-card quick-link-icon"></i>
+                        <h5 class="quick-link-title">Wanaokudai</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <!-- Dashboard Link -->
+        <div class="col-md-2 col-sm-4 mb-3">
+            <a href="{% url 'dashboard' %}" class="text-decoration-none">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-file quick-link-icon"></i>
+                        <h5 class="quick-link-title">Ripoti</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+    <hr>
+    <!-- Daily Data Section -->
+    <h2 class="text-center mb-3"><i class="fa fa-pie-chart"></i> Muhtasari wa taarifa zako</h2>
+    <p class="text-center"><i class="fas fa-calendar-day"></i> Leo hii - {{today|date}}</p>
+    <div class="row mb-4">
+        <!-- Today's Sales -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Mauzo (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ today_sales_total|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Purchase Total -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Manunuzi (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ today_purchase_total|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Profit -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Faida (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ today_profit|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Expenses -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Matumizi (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ today_expenses_total|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+    <!-- All-Time Data Section -->
+    <h2 class="text-center mb-3"><i class="fas fa-chart-area"></i> Muda wote</h2>
+    <div class="row">
+        <!-- All-time Sales -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Mauzo (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ all_time_sales_total|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- All-time Purchase Total -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Manunuzi (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ all_time_purchase_total|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- All-time Profit -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Faida (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ all_time_profit|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <!-- All-time Expenses -->
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card">
+                <div class="card-header">Matumizi (TZS)</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ all_time_expenses_total|intcomma }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

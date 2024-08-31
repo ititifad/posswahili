@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Hariri Mdai{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center text-white">Hariri Mdai</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+<form method="post">
+    {% csrf_token %}
+    {{ form|crispy }}
+    <button type="submit" class="btn btn-info">Hifadhi Mabadiliko</button>
+</form>
+<br>
+<a href="{% url 'creditor_list' %}">Rudi kwenye Orodha ya Wadai</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

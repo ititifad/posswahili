@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Orodha ya Matumizi{% endblock %}
+
+{% block content %}
+<div class="container mt-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="text-center text-white">Taarifa ya Matumizi</h1>
+        <a href="{% url 'add_expense' %}" class="btn btn-success rounded-pill">
+          Rekodi Matumizi <i class="fas fa-arrow-circle-right"></i>
+        </a>
+      </div>
+
+     <!-- Filters -->
+     <form method="get" class="mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <select id="selectedProducts" name="category" class="form-select">
+                    <option value="">Chagua kundi</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if category.id|stringformat:"s" == selected_category %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="time_filter" class="form-select">
+                    <option value="">Chagua nyakati</option>
+                    <option value="daily" {% if selected_time_filter == 'daily' %}selected{% endif %}>Leo hii</option>
+                    <option value="weekly" {% if selected_time_filter == 'weekly' %}selected{% endif %}>Wiki hii</option>
+                    <option value="monthly" {% if selected_time_filter == 'monthly' %}selected{% endif %}>Mwezi huu</option>
+                    <option value="yearly" {% if selected_time_filter == 'yearly' %}selected{% endif %}>Mwaka huu</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    
+<div class="row">
+    <!-- Products Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100" style="background-color: #F4DEB3;">
+            <div class="card-body text-center">
+                <p><small>Matumizi Leo</small></p>
+                <h6 class="card-title">{{ daily_expenses|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100"  style="background-color: #B4D6CD;">
+            <div class="card-body text-center">
+                <p><small>Matumizi Wiki</small></p>
+                <h6 class="card-title">{{ weekly_expenses|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Credits Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100" style="background-color: #F0EAAC;">
+            <div class="card-body text-center">
+                <p><small>Matumizi Mwezi</small></p>
+                <h6 class="card-title">{{ monthly_expenses|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+    <!-- Credits Link -->
+    <div class="col-md-3 mb-3">
+        <div class="card h-100" style="background-color: #CCE0AC;">
+            <div class="card-body text-center">
+                <p><small>Matumizi Mwaka</small></p>
+                <h6 class="card-title">{{ yearly_expenses|intcomma }} TZS</h6>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="table align-middle mb-0 bg-success table-bordered table-sm">
+    <thead class="table-success">
+        <tr>
+            <th>#</th>
+            <th>Tarehe</th>
+            <th>Maelezo</th>
+            <th>Kiasi</th>
+            <th>Hariri</th>
+            <th>Futa</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for expense in expenses %}
+        <tr>
+            <td>{{forloop.counter}}</td>
+            <td>{{ expense.date|date:"d/m/Y" }}</td>
+            <td>{{ expense.description }}</td>
+            <td>{{ expense.amount|intcomma }}</td>
+            <td>
+                <a href="{% url 'edit_expense' expense.id %}" class="btn btn-warning btn-sm rounded-pill me-2">Hariri</a>
+                
+            </td>
+            <td>
+                <a href="{% url 'delete_expense' expense.id %}" class="btn btn-danger btn-sm rounded-pill me-2">Futa</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+    // Initialize Select2 for the custom select menu
+    $(document).ready(function() {
+      $('#selectedProducts').select2();
+    });
+    
+    // Rest of your JavaScript code...
+  </script>
+{% endblock %}
