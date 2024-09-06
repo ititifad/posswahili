@@ -9,7 +9,7 @@ from django.db import transaction
 from django.http import HttpResponse,JsonResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Q
 from django.utils.timezone import now, timedelta
 from .models import *
 from .forms import *
@@ -18,37 +18,37 @@ from django.utils import timezone
 
 @login_required
 def dashboard(request):
+    # Get the logged-in user's store
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        return render(request, 'dashboard.html', {'error': 'You do not own a store'})
+
     # Today's date
-    today = timezone.now()
+    today = timezone.now().date()
     
-    # Today's sales
-    today_sales_total = Sale.objects.filter(date=today).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
-
-    # All-time total sales
-    all_time_sales_total = Sale.objects.aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
+    # Filter sales and expenses by the user's store
+    today_sales_total = Sale.objects.filter(store=user_store, date=today).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
+    all_time_sales_total = Sale.objects.filter(store=user_store).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
     
-    # Total purchase price of sold items today
-    today_purchase_total = (
-        SaleItem.objects.filter(sale__date=today)
-        .aggregate(total_purchase=Sum(F('product__purchase_price') * F('quantity')))['total_purchase'] or 0
-    )
-
-    # All-time total purchase price
-    all_time_purchase_total = (
-        SaleItem.objects.aggregate(total_purchase=Sum(F('product__purchase_price') * F('quantity')))['total_purchase'] or 0
-    )
-
-    # Total profit today (sales total - purchase total)
+    today_purchase_total = SaleItem.objects.filter(sale__store=user_store, sale__date=today, is_fully_refunded=False).aggregate(
+        total_purchase=Sum(F('product__purchase_price') * F('quantity'))
+    )['total_purchase'] or 0
+    
+    all_time_purchase_total = SaleItem.objects.filter(sale__store=user_store, is_fully_refunded=False).aggregate(
+        total_purchase=Sum(F('product__purchase_price') * F('quantity'))
+    )['total_purchase'] or 0
+    
     today_profit = today_sales_total - today_purchase_total
-
-    # All-time total profit
     all_time_profit = all_time_sales_total - all_time_purchase_total
-
-    # Today's expenses
-    today_expenses_total = Expense.objects.filter(date__date=today).aggregate(total_expenses=Sum('amount'))['total_expenses'] or 0
-
-    # All-time total expenses
-    all_time_expenses_total = Expense.objects.aggregate(total_expenses=Sum('amount'))['total_expenses'] or 0
+    
+    today_expenses_total = Expense.objects.filter(store=user_store, date__date=today).aggregate(
+        total_expenses=Sum('amount')
+    )['total_expenses'] or 0
+    all_time_expenses_total = Expense.objects.filter(store=user_store).aggregate(
+        total_expenses=Sum('amount')
+    )['total_expenses'] or 0
 
     context = {
         'today_sales_total': today_sales_total,
@@ -59,15 +59,18 @@ def dashboard(request):
         'all_time_profit': all_time_profit,
         'today_expenses_total': today_expenses_total,
         'all_time_expenses_total': all_time_expenses_total,
-        'today':today
+        'today': today
     }
 
     return render(request, 'dashboard.html', context)
 
+
 @login_required
 def product_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
     # Initial query
-    products = Product.objects.all().order_by('-id')
+    products = Product.objects.filter(store=user_store).order_by('-id')
+    
 
     # Filtering logic
     category_filter = request.GET.get('category')
@@ -86,6 +89,7 @@ def product_list(request):
 
     # Aggregating totals based on the filtered products
     total_products = products.count()
+    total_quantity = products.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
     total_purchase_price = products.aggregate(total_purchase_price=Sum(F('purchase_price') * F('quantity')))['total_purchase_price'] or 0
     total_selling_price = products.aggregate(total_selling_price=Sum(F('selling_price') * F('quantity')))['total_selling_price'] or 0
     
@@ -93,7 +97,7 @@ def product_list(request):
     profit = total_selling_price - total_purchase_price
 
     # Get distinct categories for filtering
-    categories = Category.objects.all()
+    categories = Category.objects.filter(store=user_store)
 
     context = {
         'products': products,
@@ -101,6 +105,7 @@ def product_list(request):
         'total_purchase_price': total_purchase_price,
         'total_selling_price': total_selling_price,
         'profit': profit,
+        'total_quantity':total_quantity,
         'categories': categories,
         'selected_category': category_filter,
         'zero_inventory_filter': zero_inventory_filter,
@@ -111,37 +116,60 @@ def product_list(request):
 @login_required
 
 def add_product(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        form = ProductForm(request.POST, request.FILES)
+        form = ProductForm(request.POST, request.FILES, store=user_store)
         if form.is_valid():
             product = form.save(commit=False)
             
             # Check if a new category was provided
             new_category = form.cleaned_data.get('new_category')
             if new_category:
-                category, created = Category.objects.get_or_create(name=new_category)
+                # Create or get the category for the user's store
+                category, created = Category.objects.get_or_create(name=new_category, store=user_store)
                 product.category = category
             elif not form.cleaned_data.get('category'):
                 # If no category was selected and no new category was provided, return an error
                 form.add_error('category', "Tafadhali chagua aina ya bidhaa au ongeza aina mpya.")
                 return render(request, 'add_product.html', {'form': form})
 
+            # Associate the product with the user's store
+            product.store = user_store
             product.save()
+
             messages.success(request, 'Bidhaa imeongezwa kikamilifu!')
             return redirect('product_list')
     else:
-        form = ProductForm()
+        form = ProductForm(store=user_store)
+
     return render(request, 'add_product.html', {'form': form})
 
 @login_required
 def sale_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+    
     # Get query parameters for filters
     product_category = request.GET.get('category')
     payment_type = request.GET.get('payment_type')
     time_filter = request.GET.get('time_filter')
+    start_date = request.GET.get('start_date')  # Get the start date from query params
+    end_date = request.GET.get('end_date')      # Get the end date from query params
 
-    # Initialize sales queryset
-    sales = Sale.objects.all().order_by('-id')
+    # Initialize sales queryset, filter where total_amount and final_amount are greater than 0
+    sales = Sale.objects.filter(
+        Q(total_amount__gt=0) & Q(final_amount__gt=0) & Q(store=user_store)
+    ).order_by('-id')
 
     # Filter by product category
     if product_category:
@@ -151,18 +179,26 @@ def sale_list(request):
     if payment_type:
         sales = sales.filter(payment_type=payment_type)
 
-    # Filter by time
+    # Filter by time (daily, weekly, monthly, yearly)
     if time_filter:
         today = timezone.now()
         if time_filter == 'daily':
-            sales = sales.filter(date=today)
+            sales = sales.filter(date=today.date())
         elif time_filter == 'weekly':
             start_of_week = today - timedelta(days=today.weekday())
-            sales = sales.filter(date__gte=start_of_week)
+            sales = sales.filter(date__gte=start_of_week.date())
         elif time_filter == 'monthly':
             sales = sales.filter(date__year=today.year, date__month=today.month)
         elif time_filter == 'yearly':
             sales = sales.filter(date__year=today.year)
+
+    # Filter by date range (start_date and end_date)
+    if start_date and end_date:
+        sales = sales.filter(date__range=[start_date, end_date])
+    elif start_date:
+        sales = sales.filter(date__gte=start_date)
+    elif end_date:
+        sales = sales.filter(date__lte=end_date)
 
     # Calculate totals for filtered sales
     total_amount = sales.aggregate(total=Sum('final_amount'))['total'] or 0
@@ -170,99 +206,101 @@ def sale_list(request):
     total_products_sold = SaleItem.objects.filter(sale__in=sales).aggregate(total=Sum('quantity'))['total'] or 0
 
     # Get all categories for the filter dropdown
-    categories = Category.objects.all()
+    categories = Category.objects.filter(store=user_store)
 
     context = {
         'sales': sales,
         'total_amount': total_amount,
         'total_sales_count': total_sales_count,
         'total_products_sold': total_products_sold,
-        'categories': categories,  # Pass categories to the context
+        'categories': categories,
         'selected_category': product_category,
         'selected_payment_type': payment_type,
         'selected_time_filter': time_filter,
+        'start_date': start_date,  # Pass start_date to the context
+        'end_date': end_date,      # Pass end_date to the context
     }
 
     return render(request, 'sale_list.html', context)
+
+
 @login_required
 @transaction.atomic
 def add_sale(request):
+    # Fetch the store of the logged-in user
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    if not user_store:
+        messages.error(request, 'You do not own a store.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        sale_form = SaleForm(request.POST)
-        item_formset = SaleItemFormSet(request.POST)
-        
+        sale_form = SaleForm(request.POST, store=user_store)
+        item_formset = SaleItemFormSet(request.POST, form_kwargs={'store': user_store})
+
         if sale_form.is_valid() and item_formset.is_valid():
-            # Create sale object but don't save to DB yet
             sale = sale_form.save(commit=False)
             sale.created_by = request.user
+            sale.store = user_store  # Associate sale with the user's store
 
-            total_amount = Decimal('0')  # Initialize total_amount as Decimal
+            total_amount = Decimal('0')
+            sufficient_stock = True
 
-            for item_form in item_formset:
-                # Ensure the form is not empty
-                if item_form.cleaned_data:
-                    product = item_form.cleaned_data.get('product')
-                    quantity = item_form.cleaned_data.get('quantity')
-                    if product and quantity:
-                        price = product.selling_price
-                        item = SaleItem(
+            with transaction.atomic():
+                for item_form in item_formset:
+                    if item_form.cleaned_data:
+                        product = item_form.cleaned_data.get('product')
+                        quantity = item_form.cleaned_data.get('quantity')
+
+                        if product and quantity:
+                            if product.quantity < quantity:
+                                sufficient_stock = False
+                                messages.error(request, f'Insufficient quantity for {product.name}. Only {product.quantity} available.')
+                                break
+                            price = product.selling_price
+                            total_amount += quantity * price
+
+                if sufficient_stock:
+                    sale.total_amount = total_amount
+                    sale.final_amount = total_amount - (sale.discount or Decimal('0'))
+                    sale.save()
+
+                    for item_form in item_formset:
+                        if item_form.cleaned_data:
+                            product = item_form.cleaned_data.get('product')
+                            quantity = item_form.cleaned_data.get('quantity')
+                            price = product.selling_price
+                            SaleItem.objects.create(
+                                sale=sale,
+                                product=product,
+                                quantity=quantity,
+                                unit_price=price,
+                                total_price=quantity * price
+                            )
+                            product.quantity -= quantity
+                            product.save()
+
+                    if sale.payment_type == 'credit':
+                        Debt.objects.create(
+                            customer=sale.customer,
                             sale=sale,
-                            product=product,
-                            quantity=quantity,
-                            unit_price=price,
-                            total_price=quantity * price
+                            amount=sale.total_amount,
+                            remaining_amount=sale.total_amount - sale.discount
                         )
-                        total_amount += item.total_price
 
-                        # Update product quantity in the database
-                        product.quantity -= quantity
-                        product.save()
-            
-            # Set the total_amount and final_amount in sale object
-            sale.total_amount = total_amount
-            sale.final_amount = total_amount - (sale.discount or Decimal('0'))
-            sale.save()  # Save sale to DB
-            
-            # Now save all SaleItem instances with the saved sale
-            for item_form in item_formset:
-                if item_form.cleaned_data:
-                    product = item_form.cleaned_data.get('product')
-                    quantity = item_form.cleaned_data.get('quantity')
-                    if product and quantity:
-                        price = product.selling_price
-                        SaleItem.objects.create(
-                            sale=sale,
-                            product=product,
-                            quantity=quantity,
-                            unit_price=price,
-                            total_price=quantity * price
-                        )
-            
-            # Create debt if payment type is credit
-            if sale.payment_type == 'credit':
-                Debt.objects.create(
-                    customer=sale.customer,
-                    sale=sale,
-                    amount=sale.total_amount,
-                    remaining_amount=sale.total_amount - sale.discount  # or use final_amount if discounts apply
-                )
-
-            messages.success(request, 'Mauzo yamerekodiwa kikamilifu!')
-            return redirect('view_sale', sale_id=sale.id)
+                    messages.success(request, 'Sale recorded successfully!')
+                    return redirect('view_sale', sale_id=sale.id)
         else:
             messages.error(request, 'Please correct the errors below.')
-            print(sale_form.errors, item_formset.errors)  # Debugging output
     else:
-        sale_form = SaleForm()
-        item_formset = SaleItemFormSet()
-    
+        sale_form = SaleForm(store=user_store)
+        item_formset = SaleItemFormSet(form_kwargs={'store': user_store})
+
     return render(request, 'add_sale.html', {
         'sale_form': sale_form,
         'item_formset': item_formset,
     })
-
-
-    
+   
 @login_required
 def add_sale_items(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
@@ -283,7 +321,7 @@ def add_sale_items(request, sale_id):
                 Debt.objects.create(
                     customer=sale.customer,
                     sale=sale,
-                    
+                    store=sale.store,
                     amount=sale_item.price * sale_item.quantity,
                     remaining_amount=sale_item.price * sale_item.quantity
                 )
@@ -295,37 +333,22 @@ def add_sale_items(request, sale_id):
     sale_items = SaleItem.objects.filter(sale=sale)
     return render(request, 'add_sale_items.html', {'form': form, 'sale': sale, 'sale_items': sale_items})
 
-# @login_required
-# def debt_list(request):
-#     debts = Debt.objects.filter(remaining_amount__gt=0).order_by('-id')
-#     return render(request, 'debt_list.html', {'debts': debts})
 
-
-# @login_required
-# def debt_list(request):
-#     total_customers_owed = Debt.objects.values('customer').distinct().count()
-#     total_amount_owed = Debt.objects.aggregate(total=Sum('amount'))['total'] or 0
-#     total_amount_paid = Debt.objects.aggregate(total=Sum('paid_amount'))['total'] or 0
-#     total_remaining_amount = Debt.objects.aggregate(total=Sum('remaining_amount'))['total'] or 0
-
-#     debts = Debt.objects.filter(remaining_amount__gt=0).order_by('-sale__date')
-
-#     return render(request, 'debt_list.html', {
-#         'debts': debts,
-#         'total_customers_owed': total_customers_owed,
-#         'total_amount_owed': total_amount_owed,
-#         'total_amount_paid': total_amount_paid,
-#         'total_remaining_amount': total_remaining_amount,
-#     })
 
 @login_required
 def debt_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
     # Get query parameters for filters
     customer_id = request.GET.get('customer')
     time_filter = request.GET.get('time_filter')
 
     # Initialize debt queryset
-    debts = Debt.objects.filter(remaining_amount__gt=0).order_by('-sale__date')
+    debts = Debt.objects.filter(remaining_amount__gt=0, store=user_store).order_by('-sale__date')
 
     # Filter by customer
     if customer_id:
@@ -351,7 +374,7 @@ def debt_list(request):
     total_remaining_amount = debts.aggregate(total=Sum('remaining_amount'))['total'] or 0
 
     # Get all customers for the filter dropdown
-    customers = Customer.objects.all()
+    customers = Customer.objects.filter(store=user_store)
 
     context = {
         'debts': debts,
@@ -370,30 +393,41 @@ def debt_list(request):
 @login_required
 def add_debt_payment(request, debt_id):
     debt = get_object_or_404(Debt, id=debt_id)
+
     if request.method == 'POST':
         form = DebtPaymentForm(request.POST)
         if form.is_valid():
             payment = form.save(commit=False)
             payment.debt = debt
+            payment.store = debt.store  # Associate the payment with the store
             payment.save()
 
             # Update remaining amount
             debt.remaining_amount -= payment.amount
             debt.save()
+
             messages.success(request, 'Malipo yamerekodiwa kikamilifu!')
             return redirect('debt_list')
     else:
         form = DebtPaymentForm()
+
     return render(request, 'add_debt_payment.html', {'form': form, 'debt': debt})
+
 
 @login_required
 def expense_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
     # Get query parameters for filters
     category_id = request.GET.get('category')
     time_filter = request.GET.get('time_filter')
 
     # Initialize expense queryset
-    expenses = Expense.objects.all().order_by('-date')
+    expenses = Expense.objects.filter(store=user_store).order_by('-date')
 
     # Filter by category
     if category_id:
@@ -415,10 +449,10 @@ def expense_list(request):
     total_expenses = expenses.aggregate(total_amount=Sum('amount'))['total_amount'] or 0
 
     # Calculate totals for specific time periods regardless of other filters
-    daily_expenses = Expense.objects.filter(date__date=today)
-    weekly_expenses = Expense.objects.filter(date__date__gte=today - timedelta(days=7))
-    monthly_expenses = Expense.objects.filter(date__year=today.year, date__month=today.month)
-    yearly_expenses = Expense.objects.filter(date__year=today.year)
+    daily_expenses = expenses.filter(date__date=today)
+    weekly_expenses = expenses.filter(date__date__gte=today - timedelta(days=7))
+    monthly_expenses = expenses.filter(date__year=today.year, date__month=today.month)
+    yearly_expenses = expenses.filter(date__year=today.year)
 
     if category_id:
         daily_expenses = daily_expenses.filter(category_id=category_id)
@@ -432,7 +466,7 @@ def expense_list(request):
     yearly_expenses = yearly_expenses.aggregate(total_amount=Sum('amount'))['total_amount'] or 0
 
     # Get all categories for the filter dropdown
-    categories = ExpenseCategory.objects.all()
+    categories = ExpenseCategory.objects.filter(store=user_store)
 
     context = {
         'expenses': expenses,
@@ -451,27 +485,55 @@ def expense_list(request):
 
 @login_required
 def add_expense(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        form = ExpenseForm(request.POST)
+        form = ExpenseForm(request.POST, store=user_store)
         if form.is_valid():
-            form.save()
+            expense = form.save(commit=False)
+            expense.store = user_store  # Associate the expense with the store
+
+            # Handle new category creation
+            new_category = form.cleaned_data.get('new_category')
+            if new_category:
+                category, created = ExpenseCategory.objects.get_or_create(store=user_store, name=new_category)
+                expense.category = category
+            elif not form.cleaned_data.get('category'):
+                # If no category is selected and no new category is provided, return an error
+                form.add_error('category', "Tafadhali chagua aina ya matumizi au ongeza aina mpya.")
+                return render(request, 'add_expense.html', {'form': form})
+
+            expense.save()
             messages.success(request, 'Matumizi yamerekodiwa kikamilifu!')
             return redirect('expense_list')
     else:
-        form = ExpenseForm()
+        form = ExpenseForm(store=user_store)
+
     return render(request, 'add_expense.html', {'form': form})
+
 
 @login_required
 def customer_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
     # Fetch query parameters from the request
     customer_name = request.GET.get('customer_name', '')
     debt_status = request.GET.get('debt_status', 'all')  # 'all', 'active', or 'paid'
 
     # Fetch all customers for the dropdown
-    all_customers = Customer.objects.all()
+    all_customers = Customer.objects.filter(store=user_store)
 
     # Filter customers by selected name if provided
-    customers = Customer.objects.all()
+    customers = all_customers
     if customer_name:
         customers = customers.filter(name=customer_name)
 
@@ -495,48 +557,74 @@ def customer_list(request):
         'debt_status': debt_status,
     }
 
-
-
-
     return render(request, 'customer_list.html', context)
 
 @login_required
 def add_customer(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
         form = CustomerForm(request.POST)
         if form.is_valid():
-            form.save()
+            customer = form.save(commit=False)
+            customer.store = user_store  # Associate the customer with the store
+            customer.save()
             messages.success(request, 'Mteja mpya amerekodiwa kikamilifu!')
             return redirect('customer_list')
     else:
         form = CustomerForm()
+
     return render(request, 'add_customer.html', {'form': form})
+
 
 @login_required
 def creditor_list(request):
-    creditors = Creditor.objects.all()
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+    creditors = Creditor.objects.filter(store=user_store)
     return render(request, 'creditor_list.html', {'creditors': creditors})
 
 @login_required
 def add_creditor(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+    
     if request.method == 'POST':
         form = CreditorForm(request.POST)
         if form.is_valid():
-            form.save()
+            creditor = form.save(commit=False)
+            creditor.store = user_store  # Associate the creditor with the store
+            creditor.save()
             messages.success(request, 'Mdai amerekodiwa kikamilifu!')
             return redirect('creditor_list')
     else:
         form = CreditorForm()
     return render(request, 'add_creditor.html', {'form': form})
 
-# @login_required
-# def credit_list(request):
-#     credits = Credit.objects.filter(remaining_amount__gt=0)
-#     return render(request, 'credit_list.html', {'credits': credits})
 
 
 @login_required
 def credit_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+    
     # Get filter parameters from request
     period = request.GET.get('period', 'all')  # 'daily', 'weekly', 'monthly', 'yearly', or 'all'
     status = request.GET.get('status', 'active')  # 'active', 'inactive', or 'all'
@@ -556,7 +644,7 @@ def credit_list(request):
         start_date = None  # No time filter
 
     # Base queryset
-    credits = Credit.objects.all()
+    credits = Credit.objects.filter(store=user_store)
 
     # Apply time filter
     if start_date:
@@ -582,7 +670,7 @@ def credit_list(request):
     credits = credits.order_by('-date')
 
     # Get all creditors for the filter dropdown
-    creditors = Creditor.objects.all()
+    creditors = Creditor.objects.filter(store=user_store)
 
     return render(request, 'credit_list.html', {
         'credits': credits,
@@ -598,36 +686,51 @@ def credit_list(request):
 
 @login_required
 def add_credit(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        form = CreditForm(request.POST)
+        form = CreditForm(request.POST, store=user_store)
         if form.is_valid():
             create_new_creditor = form.cleaned_data.get('create_new_creditor')
             if create_new_creditor:
-                # Create new creditor
                 creditor_name = form.cleaned_data.get('creditor_name')
                 creditor_phone_number = form.cleaned_data.get('creditor_phone_number')
                 creditor, created = Creditor.objects.get_or_create(
                     name=creditor_name,
-                    phone_number=creditor_phone_number
+                    phone_number=creditor_phone_number,
+                    store=user_store  # Associate the creditor with the store
                 )
             else:
                 creditor = form.cleaned_data.get('creditor')
 
-            # Create new credit entry
             credit = form.save(commit=False)
             credit.creditor = creditor
+            credit.store = user_store
             credit.remaining_amount = credit.amount
             credit.save()
+
             messages.success(request, 'Mkopo umerekodiwa kikamilifu!')
             return redirect('credit_list')
     else:
-        form = CreditForm()
+        form = CreditForm(store=user_store)
 
     return render(request, 'add_credit.html', {'form': form})
+
 
 @login_required
 def add_credit_payment(request, credit_id):
     credit = get_object_or_404(Credit, id=credit_id)
+    user_store = Store.objects.filter(owner=request.user).first()
+
+    # If the store associated with the credit doesn't match the user's store, restrict access
+    if credit.store != user_store:
+        messages.error(request, 'Huna ruhusa ya kufanya malipo kwa mkopo huu.')
+        return redirect('credit_list')
+
     if request.method == 'POST':
         form = CreditPaymentForm(request.POST)
         if form.is_valid():
@@ -638,10 +741,12 @@ def add_credit_payment(request, credit_id):
             # Update remaining amount
             credit.remaining_amount -= payment.amount
             credit.save()
+
             messages.success(request, 'Malipo ya mkopo yamerekodiwa kikamilifu!')
             return redirect('credit_list')
     else:
         form = CreditPaymentForm()
+
     return render(request, 'add_credit_payment.html', {'form': form, 'credit': credit})
 
 @login_required
@@ -663,29 +768,52 @@ def expense_report(request):
 @login_required
 def edit_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
+
+    # Check if the logged-in user is the owner of the store associated with the product
+    if product.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuhariri bidhaa hii.')
+        return redirect('product_list')
+
     if request.method == 'POST':
-        form = ProductForm(request.POST, request.FILES, instance=product)
+        form = ProductForm(request.POST, request.FILES, instance=product, store=product.store)
         if form.is_valid():
             form.save()
             messages.success(request, 'Bidhaa imehaririwa kikamilifu!')
             return redirect('product_list')
     else:
-        form = ProductForm(instance=product)
+        form = ProductForm(instance=product, store=product.store)
+    
     return render(request, 'edit_product.html', {'form': form, 'product': product})
+
+
+
 
 @login_required
 def delete_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
+
+    # Check if the logged-in user is the owner of the store associated with the product
+    if product.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kufuta bidhaa hii.')
+        return redirect('product_list')
+
     if request.method == 'POST':
         product.delete()
         messages.success(request, 'Bidhaa imefutwa kikamilifu!')
         return redirect('product_list')
+    
     return render(request, 'delete_product.html', {'product': product})
 
-# Customer views
+
 @login_required
 def edit_customer(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id)
+
+    # Check if the logged-in user is the owner of the store associated with the customer
+    if customer.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuhariri mteja huyu.')
+        return redirect('customer_list')
+
     if request.method == 'POST':
         form = CustomerForm(request.POST, instance=customer)
         if form.is_valid():
@@ -694,21 +822,39 @@ def edit_customer(request, customer_id):
             return redirect('customer_list')
     else:
         form = CustomerForm(instance=customer)
+
     return render(request, 'edit_customer.html', {'form': form, 'customer': customer})
+
+
 
 @login_required
 def delete_customer(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id)
+
+    # Check if the logged-in user is the owner of the store associated with the customer
+    if customer.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kufuta mteja huyu.')
+        return redirect('customer_list')
+
     if request.method == 'POST':
         customer.delete()
         messages.success(request, 'Mteja amefutwa kikamilifu!')
         return redirect('customer_list')
+    
     return render(request, 'delete_customer.html', {'customer': customer})
+
+
 
 # Creditor views
 @login_required
 def edit_creditor(request, creditor_id):
     creditor = get_object_or_404(Creditor, id=creditor_id)
+
+       # Check if the logged-in user is the owner of the store associated with the customer
+    if creditor.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuhariri mdai huyu.')
+        return redirect('creditor_list')
+    
     if request.method == 'POST':
         form = CreditorForm(request.POST, instance=creditor)
         if form.is_valid():
@@ -721,6 +867,12 @@ def edit_creditor(request, creditor_id):
 @login_required
 def delete_creditor(request, creditor_id):
     creditor = get_object_or_404(Creditor, id=creditor_id)
+
+       # Check if the logged-in user is the owner of the store associated with the customer
+    if creditor.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kumfuta mdai huyu.')
+        return redirect('creditor_list')
+    
     if request.method == 'POST':
         creditor.delete()
         return redirect('creditor_list')
@@ -730,40 +882,72 @@ def delete_creditor(request, creditor_id):
 @login_required
 def view_sale(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
-    sale_items = sale.items.all()
+
+    # Check if the logged-in user is the owner of the store associated with the sale
+    if sale.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuona mauzo haya.')
+        return redirect('dashboard')
+
+    sale_items = sale.items.filter(is_fully_refunded=False)
     return render(request, 'view_sale.html', {'sale': sale, 'sale_items': sale_items})
+
 
 @login_required
 def view_debt(request, debt_id):
     debt = get_object_or_404(Debt, id=debt_id)
+
+    # Check if the logged-in user is the owner of the store associated with the debt
+    if debt.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuona deni hili.')
+        return redirect('dashboard')
+
     sale_items = debt.sale.items.all()
     payments = debt.debtpayment_set.all()
-    return render(request, 'view_debt.html', {'debt': debt, 'payments': payments,'sale_items': sale_items,})
+    return render(request, 'view_debt.html', {'debt': debt, 'payments': payments, 'sale_items': sale_items})
+
 
 @login_required
 def view_credit(request, credit_id):
     credit = get_object_or_404(Credit, id=credit_id)
-    
+
+    # Check if the logged-in user is the owner of the store associated with the credit
+    if credit.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuona mkopo huu.')
+        return redirect('dashboard')
+
     payments = credit.creditpayment_set.all()
     return render(request, 'view_credit.html', {'credit': credit, 'payments': payments})
+
 
 
 @login_required
 def edit_expense(request, expense_id):
     expense = get_object_or_404(Expense, id=expense_id)
+
+      # Check if the logged-in user is the owner of the store associated with the customer
+    if expense.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kuhariri matumizi haya.')
+        return redirect('expense_list')
+    
     if request.method == 'POST':
-        form = ExpenseForm(request.POST, instance=expense)
+        form = ExpenseForm(request.POST, instance=expense, store=expense.store)
         if form.is_valid():
             form.save()
             messages.success(request, 'Matumizi yamebadilishwa kikamilifu.')
             return redirect('expense_list')
     else:
-        form = ExpenseForm(instance=expense)
+        form = ExpenseForm(instance=expense, store=expense.store)
     return render(request, 'edit_expense.html', {'form': form, 'expense': expense})
 
 @login_required
 def delete_expense(request, expense_id):
     expense = get_object_or_404(Expense, id=expense_id)
+
+      # Check if the logged-in user is the owner of the store associated with the customer
+    if expense.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kufuta matumizi haya.')
+        return redirect('expense_list')
+    
     if request.method == 'POST':
         expense.delete()
         messages.success(request, 'Matumizi yamefutwa kikamilifu.')
@@ -774,19 +958,27 @@ def delete_expense(request, expense_id):
 @login_required
 def generate_pdf_invoice(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
-    sale_items = sale.items.all()
+
+    # Check if the logged-in user is the owner of the store associated with the sale
+    if sale.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kutengeneza ankara kwa mauzo haya.')
+        return redirect('dashboard')
+
+    sale_items = sale.items.filter(is_fully_refunded=False)
     
     template_path = 'invoice_pdf.html'  # Separate template for generating PDF
     context = {
         'sale': sale,
         'sale_items': sale_items,
     }
+    
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Invoice_{sale.id}.pdf"'
 
     template = get_template(template_path)
     html = template.render(context)
 
+    # Generate PDF
     pisa_status = pisa.CreatePDF(html, dest=response)
 
     if pisa_status.err:
@@ -795,3 +987,101 @@ def generate_pdf_invoice(request, sale_id):
     return response
 
 
+# @login_required
+# def refund_product(request, sale_item_id):
+#     sale_item = get_object_or_404(SaleItem, id=sale_item_id)
+    
+#     if request.method == 'POST':
+#         form = RefundForm(request.POST)
+#         if form.is_valid():
+#             refund_quantity = form.cleaned_data['refund_quantity']
+#             refund_reason = form.cleaned_data['refund_reason']
+            
+#             # Check if the refund quantity exceeds available quantity
+#             available_quantity = sale_item.quantity - sale_item.refunded_quantity
+#             if refund_quantity > available_quantity:
+#                 form.add_error('refund_quantity', 'Refund quantity exceeds available quantity.')
+#             else:
+#                 with transaction.atomic():
+#                     # Update SaleItem refund information
+#                     sale_item.refunded_quantity += refund_quantity
+#                     sale_item.refund_reason = refund_reason
+
+#                     # Mark as fully refunded if all quantity is refunded
+#                     if sale_item.refunded_quantity == sale_item.quantity:
+#                         sale_item.is_fully_refunded = True
+#                     sale_item.save()
+
+#                     # Return the refunded product to the inventory
+#                     product = sale_item.product
+#                     product.quantity += refund_quantity
+#                     product.save()
+
+#                     # Update the Sale's total_amount and final_amount
+#                     refund_value = refund_quantity * sale_item.unit_price
+#                     sale = sale_item.sale
+#                     sale.total_amount -= refund_value
+#                     sale.final_amount = sale.total_amount - (sale.discount or Decimal('0'))
+#                     sale.save()
+
+#                     messages.success(request, f'{refund_quantity} of {product.name} has been refunded and returned to inventory.')
+#                     return redirect('view_sale', sale_id=sale_item.sale.id)
+#     else:
+#         form = RefundForm()
+
+#     return render(request, 'refund_product.html', {
+#         'form': form,
+#         'sale_item': sale_item
+#     })
+
+@login_required
+def refund_product(request, sale_item_id):
+    sale_item = get_object_or_404(SaleItem, id=sale_item_id)
+    sale = sale_item.sale
+
+    # Check if the logged-in user is the owner of the store associated with the sale
+    if sale.store.owner != request.user:
+        messages.error(request, 'Huna ruhusa ya kurudisha bidhaa hii.')
+        return redirect('view_sale', sale_id=sale.id)
+
+    if request.method == 'POST':
+        form = RefundForm(request.POST)
+        if form.is_valid():
+            refund_quantity = form.cleaned_data['refund_quantity']
+            refund_reason = form.cleaned_data['refund_reason']
+            
+            # Check if the refund quantity exceeds available quantity
+            available_quantity = sale_item.quantity - sale_item.refunded_quantity
+            if refund_quantity > available_quantity:
+                form.add_error('refund_quantity', 'Kiasi cha kurudisha kinazidi kiasi kilichobaki.')
+            else:
+                with transaction.atomic():
+                    # Update SaleItem refund information
+                    sale_item.refunded_quantity += refund_quantity
+                    sale_item.refund_reason = refund_reason
+
+                    # Mark as fully refunded if all quantity is refunded
+                    if sale_item.refunded_quantity == sale_item.quantity:
+                        sale_item.is_fully_refunded = True
+                    sale_item.save()
+
+                    # Return the refunded product to the inventory
+                    product = sale_item.product
+                    product.quantity += refund_quantity
+                    product.save()
+
+                    # Update the Sale's total_amount and final_amount
+                    refund_value = refund_quantity * sale_item.unit_price
+                    sale.total_amount -= refund_value
+                    sale.final_amount = sale.total_amount - (sale.discount or Decimal('0'))
+                    sale.save()
+
+                    messages.success(request, f'{refund_quantity} ya {product.name} imerudishwa kwenye hesabu.')
+                    return redirect('view_sale', sale_id=sale_item.sale.id)
+    else:
+        form = RefundForm()
+
+    return render(request, 'refund_product.html', {
+        'form': form,
+        'sale_item': sale_item
+    })

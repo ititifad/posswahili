@@ -15,6 +15,7 @@ urlpatterns = [
     path('sales/<int:sale_id>/items/', views.add_sale_items, name='add_sale_items'),
     # Detailed view URLs
     path('sales/<int:sale_id>/', views.view_sale, name='view_sale'),
+    path('refund/<int:sale_item_id>/', views.refund_product, name='refund_product'),
 
     path('debts/', views.debt_list, name='debt_list'),
     path('debts/<int:debt_id>/pay/', views.add_debt_payment, name='add_debt_payment'),

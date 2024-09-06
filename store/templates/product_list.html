@@ -17,7 +17,7 @@
         <div class="row">
             <!-- Category Filter -->
             <div class="col-md-4">
-                <label for="category" class="form-label text-white">Chagua Aina ya Bidhaa:</label>
+                <label for="category" class="form-label">Chagua Aina ya Bidhaa:</label>
                 <select name="category" class="form-select selectedProducts" onchange="this.form.submit()">
                     <option value="">Zote</option>
                     {% for category in categories %}
@@ -28,7 +28,7 @@
       
             <!-- Zero Inventory Filter -->
             <div class="col-md-4">
-                <label class="form-label text-white">Bidhaa zilizokwisha:</label>
+                <label class="form-label">Bidhaa zilizokwisha:</label>
                 <div class="form-check">
                     <input type="checkbox" name="zero_inventory" value="true" class="form-check-input" id="zero_inventory" onchange="this.form.submit()"
                         {% if zero_inventory_filter == 'true' %}checked{% endif %}>
@@ -38,7 +38,7 @@
             
             <!-- Low Stock Filter -->
             <div class="col-md-4">
-                <label class="form-label text-white">Bidhaa Karibu Kwisha:</label>
+                <label class="form-label">Bidhaa Karibu Kwisha:</label>
                 <div class="form-check">
                     <input type="checkbox" name="low_stock" value="true" class="form-check-input" id="low_stock" onchange="this.form.submit()"
                         {% if low_stock_filter == 'true' %}checked{% endif %}>
@@ -53,7 +53,7 @@
         <div class="card h-100" style="background-color: #F4DEB3;">
             <div class="card-body text-center">
                 <p><small>Bidhaa</small></p>
-                <h6 class="card-title">{{ total_products }}</h6>
+                <h6 class="card-title">{{ total_quantity }}</h6>
             </div>
         </div>
     </div>

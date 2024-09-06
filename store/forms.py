@@ -4,14 +4,23 @@ from .models import *
 
 class ProductForm(forms.ModelForm):
     new_category = forms.CharField(max_length=100, required=False, label="Aina Mpya ya Bidhaa")
-    description = forms.CharField(widget=forms.Textarea(attrs={'rows': '3'}))
+    description = forms.CharField(widget=forms.Textarea(attrs={'rows': '3'}), required=False)
+
     class Meta:
         model = Product
         fields = ['name', 'quantity', 'purchase_price', 'selling_price', 'category', 'package', 'description']
 
     def __init__(self, *args, **kwargs):
+        # Capture the store from the kwargs if passed
+        store = kwargs.pop('store', None)
         super().__init__(*args, **kwargs)
+        
+        # Make the category field optional
         self.fields['category'].required = False
+
+        # Filter the categories to show only those belonging to the passed store
+        if store:
+            self.fields['category'].queryset = Category.objects.filter(store=store)
 
 class CustomerForm(forms.ModelForm):
     class Meta:
@@ -21,26 +30,43 @@ class CustomerForm(forms.ModelForm):
 class SaleForm(forms.ModelForm):
     class Meta:
         model = Sale
-        fields = ['date','customer', 'payment_type', 'discount', 'notes']
+        fields = ['date', 'customer', 'payment_type', 'discount']
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'}),
         }
 
-class SaleItemForm(forms.Form):
-    product = forms.ModelChoiceField(queryset=Product.objects.all())
-    quantity = forms.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
+    def __init__(self, *args, **kwargs):
+        store = kwargs.pop('store', None)  # Extract store from kwargs
+        super().__init__(*args, **kwargs)
 
+        if store:
+            # Filter customers based on the store
+            self.fields['customer'].queryset = Customer.objects.filter(store=store)
+
+
+class SaleItemForm(forms.Form):
+    product = forms.ModelChoiceField(queryset=Product.objects.none())  # Initialize with an empty queryset
+    quantity = forms.DecimalField(max_digits=10, decimal_places=2, min_value=1)
+
+    def __init__(self, *args, **kwargs):
+        store = kwargs.pop('store', None)  # Extract store from kwargs
+        super().__init__(*args, **kwargs)
+
+        if store:
+            # Filter products based on the store
+            self.fields['product'].queryset = Product.objects.filter(store=store)
+
+
+# Formset for SaleItemForm
 SaleItemFormSet = forms.formset_factory(SaleItemForm, extra=1)
+
 
 class DebtPaymentForm(forms.ModelForm):
     class Meta:
         model = DebtPayment
         fields = ['amount']
 
-class ExpenseForm(forms.ModelForm):
-    class Meta:
-        model = Expense
-        fields = ['category','description', 'amount']
+
 
 class CreditorForm(forms.ModelForm):
     class Meta:
@@ -58,6 +84,7 @@ class CreditForm(forms.ModelForm):
     creditor_name = forms.CharField(required=False, max_length=200, label='Jina la Mkopeshaji')
     creditor_phone_number = forms.CharField(required=False, max_length=50, label='Namba ya Simu ya Mkopeshaji')
     description = forms.CharField(widget=forms.Textarea(attrs={'rows': '3'}))
+
     class Meta:
         model = Credit
         fields = ['creditor', 'create_new_creditor', 'creditor_name', 'creditor_phone_number', 'amount', 'description']
@@ -66,6 +93,15 @@ class CreditForm(forms.ModelForm):
             'amount': 'Kiasi',
             'description': 'Maelezo',
         }
+
+    def __init__(self, *args, **kwargs):
+        # Capture the store passed from the view
+        store = kwargs.pop('store', None)
+        super().__init__(*args, **kwargs)
+
+        if store:
+            # Filter creditors based on the store
+            self.fields['creditor'].queryset = Creditor.objects.filter(store=store)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -85,3 +121,23 @@ class CreditPaymentForm(forms.ModelForm):
     class Meta:
         model = CreditPayment
         fields = ['amount']
+
+
+class RefundForm(forms.Form):
+    refund_quantity = forms.IntegerField(min_value=1, label='Refund Quantity')
+    refund_reason = forms.CharField(max_length=255, required=False, label='Refund Reason')
+
+
+class ExpenseForm(forms.ModelForm):
+    new_category = forms.CharField(max_length=100, required=False, label="Aina Mpya ya Matumizi")
+
+    class Meta:
+        model = Expense
+        fields = ['category', 'description', 'amount']
+
+    def __init__(self, *args, **kwargs):
+        self.store = kwargs.pop('store', None)
+        super().__init__(*args, **kwargs)
+        # Filter categories based on the store
+        self.fields['category'].queryset = ExpenseCategory.objects.filter(store=self.store)
+        self.fields['category'].required = False  # Category can be blank if adding a new one

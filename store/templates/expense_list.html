@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-3 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="text-center text-white">Taarifa ya Matumizi</h1>
+        <h1 class="text-center">Taarifa ya Matumizi</h1>
         <a href="{% url 'add_expense' %}" class="btn btn-success rounded-pill">
           Rekodi Matumizi <i class="fas fa-arrow-circle-right"></i>
         </a>
@@ -33,8 +33,8 @@
                     <option value="yearly" {% if selected_time_filter == 'yearly' %}selected{% endif %}>Mwaka huu</option>
                 </select>
             </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Chakata</button>
             </div>
         </div>
     </form>

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary">
+                    <h4 class="mb-0">Refund Product</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Product Details -->
+                    <div class="mb-4">
+                        <h5 class="card-title">{{ sale_item.product.name }}</h5>
+                        <p class="card-text">
+                            <strong>Quantity Sold:</strong> {{ sale_item.quantity }}<br>
+                            <strong>Already Refunded:</strong> {{ sale_item.refunded_quantity }}<br>
+                            <strong>Available for Refund:</strong> {{ sale_item.quantity|add:"-1"|add:sale_item.refunded_quantity }}
+                        </p>
+                    </div>
+
+                    <!-- Refund Form -->
+                    <form method="post">
+                        {% csrf_token %}
+                        <div data-mdb-input-init class="form-outline mb-4">
+                            {{ form.refund_quantity.label_tag }}
+                            {{ form.refund_quantity|add_class:"form-control" }}
+                            {% if form.refund_quantity.errors %}
+                                <div class="invalid-feedback d-block">{{ form.refund_quantity.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div data-mdb-input-init class="form-outline mb-4">
+                            {{ form.refund_reason.label_tag }}
+                            {{ form.refund_reason|add_class:"form-control" }}
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-block">Process Refund</button>
+                    </form>
+
+                    <a href="{% url 'view_sale' sale_item.sale.id %}" class="btn btn-secondary btn-block mt-3">Back to Sale Details</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

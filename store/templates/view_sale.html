@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container mt-3 mb-4">
-    <h1 class="text-center text-white">Taarifa ya Mauzo</h1>
+    <h1 class="text-center">Taarifa ya Mauzo</h1>
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card">
@@ -28,15 +28,23 @@
             <th>Idadi</th>
             <th>Bei</th>
             <th>Jumla</th>
+            <th>Refund</th>
         </tr>
     </thead>
     <tbody>
-        {% for item in sale.items.all %}
+        {% for item in sale_items %}
         <tr>
             <td>{{ item.product.name }}</td>
             <td>{{ item.quantity }}</td>
             <td>{{ item.unit_price|intcomma }}</td>
             <td>{{ item.total_price|intcomma }}</td>
+            <td>
+                {% if item.quantity > item.refunded_quantity %}
+                <a href="{% url 'refund_product' item.id %}">Refund</a>
+                {% else %}
+                Fully Refunded
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>

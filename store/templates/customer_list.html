@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container mt-3 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="text-center text-white">Taarifa ya Wateja</h1>
+        <h1 class="text-center">Taarifa ya Wateja</h1>
         <a href="{% url 'add_customer' %}" class="btn btn-success rounded-pill">
           Sajili Mteja <i class="fas fa-arrow-circle-right"></i>
         </a>
@@ -13,7 +13,7 @@
     <form method="get" class="mb-4">
         <div class="row">
             <div class="col-md-4">
-                <select id="selectedProducts" name="customer_name" class="form-control">
+                <select id="selectedProducts" name="customer_name" class="form-select">
                     <option value="" {% if customer_name == '' %}selected{% endif %}>Chagua Wateja</option>
                     {% for customer in all_customers %}
                     <option value="{{ customer.name }}" {% if customer_name == customer.name %}selected{% endif %}>{{ customer.name }}</option>
@@ -21,7 +21,7 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <select name="debt_status" class="form-control">
+                <select name="debt_status" class="form-select">
                     <option value="all" {% if debt_status == 'all' %}selected{% endif %}>Chagua Status</option>
                     <option value="active" {% if debt_status == 'active' %}selected{% endif %}>Wateja wenye Madeni</option>
                     <option value="paid" {% if debt_status == 'paid' %}selected{% endif %}>Wasio na Madeni</option>
@@ -34,7 +34,7 @@
     </form>
 
     <!-- Customer List Table -->
-    <table class="table table-bordered">
+    <table class="table align-middle mb-0 bg-white table-bordered table-sm">
         <thead>
             <tr>
                 <th>#</th>
