@@ -11,6 +11,16 @@ class Store(models.Model):
 
     def __str__(self):
         return self.name
+    
+class Seller(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='seller_profile')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='sellers',null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return f"Seller {self.user.username} for {self.store.name}"
+# Add this to your User model (you might need to create a custom user model)
+User.add_to_class('is_seller', models.BooleanField(default=False))
 
 class Category(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='storecats', null=True)

@@ -35,6 +35,7 @@ IMPORT_FORMATS = [CSV, XLSX]
 
 INSTALLED_APPS = [
     'store.apps.StoreConfig',
+    'users.apps.UsersConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.humanize',

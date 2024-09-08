@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+  <h2>Dashboard for {{ store.name }}</h2>
+  <h3>Sellers:</h3>
+  <ul>
+    {% for seller in sellers %}
+      <li>{{ seller.user.username }}</li>
+    {% empty %}
+      <li>No sellers yet.</li>
+    {% endfor %}
+  </ul>
+  <a href="{% url 'assign_seller' store.id %}" class="btn btn-primary">Add New Seller</a>
+  <a href="{% url 'add_sale' %}" class="btn btn-success">Add Sale</a>
+</div>
+{% endblock %}

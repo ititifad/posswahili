@@ -8,12 +8,15 @@ from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponse,JsonResponse
 from django.template.loader import get_template
+from .decorators import allowed_users, admin_only
 from xhtml2pdf import pisa
 from django.db.models import Sum, F, Q
 from django.utils.timezone import now, timedelta
 from .models import *
 from .forms import *
 from django.utils import timezone
+from datetime import date, timedelta, datetime
+
 
 
 @login_required
@@ -23,10 +26,10 @@ def dashboard(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        return render(request, 'dashboard.html', {'error': 'You do not own a store'})
+        return render(request, 'dashboard.html', {'error': 'Haumiliki duka kwa sasa'})
 
     # Today's date
-    today = timezone.now().date()
+    today = date.today()
     
     # Filter sales and expenses by the user's store
     today_sales_total = Sale.objects.filter(store=user_store, date=today).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
@@ -51,6 +54,7 @@ def dashboard(request):
     )['total_expenses'] or 0
 
     context = {
+        'user_store':user_store,
         'today_sales_total': today_sales_total,
         'all_time_sales_total': all_time_sales_total,
         'today_purchase_total': today_purchase_total,
@@ -65,9 +69,103 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
+
+@login_required
+def store_list(request):
+    user_store = Store.objects.filter(owner=request.user).first()
+
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
+    stores = Store.objects.filter(owner=request.user)
+    return render(request, 'store_list.html', {'stores': stores})
+
+@login_required
+def edit_store(request, store_id):
+    store = get_object_or_404(Store, id=store_id, owner=request.user)
+    
+    if request.method == 'POST':
+        form = StoreForm(request.POST, instance=store)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Store details updated successfully!')
+            return redirect('store_list')
+    else:
+        form = StoreForm(instance=store)
+    
+    return render(request, 'edit_store.html', {'form': form})
+
+@login_required
+def delete_store(request, store_id):
+    store = get_object_or_404(Store, id=store_id, owner=request.user)
+    
+    if request.method == 'POST':
+        store.delete()
+        messages.success(request, 'Store deleted successfully!')
+        return redirect('store_list')
+    
+    return render(request, 'delete_store.html', {'store': store})
+
+
+# @login_required
+# def assign_seller(request, store_id):
+#     store = Store.objects.get(id=store_id, owner=request.user)
+    
+#     if request.method == 'POST':
+#         username = request.POST.get('username')
+#         password = request.POST.get('password')
+        
+#         # Create user for seller
+#         user = User.objects.create_user(username=username, password=password)
+        
+#         # Assign seller to store
+#         Seller.objects.create(user=user, store=store)
+        
+#         return redirect('store_list')  # Redirect to store dashboard after assigning seller
+    
+#     return render(request, 'assign_seller.html', {'store': store})
+
+
+
+@login_required
+def assign_seller(request, store_id):
+    store = get_object_or_404(Store, id=store_id, owner=request.user)
+    
+    if request.method == 'POST':
+        form = CreateSellerForm(request.POST)
+        if form.is_valid():
+            form.save(store=store)
+            messages.success(request, 'Seller has been assigned successfully!')
+            return redirect('store_list')
+    else:
+        form = CreateSellerForm()
+
+    return render(request, 'assign_seller.html', {'form': form, 'store': store})
+
+@login_required
+def user_redirect(request):
+    if request.user.is_seller:
+        return redirect('add_sale')
+    else:
+        return redirect('store_list')  # Assuming you have a view to list stores owned by the user
+
+@login_required
+def store_details(request, store_id):
+    store = get_object_or_404(Store, id=store_id, owner=request.user)
+    sellers = store.sellers.all()
+    return render(request, 'store_details.html', {'store': store, 'sellers': sellers})
+
 @login_required
 def product_list(request):
     user_store = Store.objects.filter(owner=request.user).first()
+
+
+    # If the user doesn't own a store, redirect or return a message
+    if not user_store:
+        messages.error(request, 'Huna duka.')
+        return redirect('dashboard')
     # Initial query
     products = Product.objects.filter(store=user_store).order_by('-id')
     
@@ -181,12 +279,12 @@ def sale_list(request):
 
     # Filter by time (daily, weekly, monthly, yearly)
     if time_filter:
-        today = timezone.now()
+        today = date.today()
         if time_filter == 'daily':
-            sales = sales.filter(date=today.date())
+            sales = sales.filter(date=today)
         elif time_filter == 'weekly':
             start_of_week = today - timedelta(days=today.weekday())
-            sales = sales.filter(date__gte=start_of_week.date())
+            sales = sales.filter(date__gte=start_of_week.today())
         elif time_filter == 'monthly':
             sales = sales.filter(date__year=today.year, date__month=today.month)
         elif time_filter == 'yearly':
@@ -225,14 +323,86 @@ def sale_list(request):
 
 
 @login_required
+# @store_owner_or_seller_required
 @transaction.atomic
-def add_sale(request):
-    # Fetch the store of the logged-in user
-    user_store = Store.objects.filter(owner=request.user).first()
 
-    if not user_store:
-        messages.error(request, 'You do not own a store.')
-        return redirect('dashboard')
+# def add_sale(request):
+#     # Fetch the store of the logged-in user
+#     user_store = Store.objects.filter(owner=request.user).first()
+
+#     if not user_store:
+#         messages.error(request, 'You do not own a store.')
+#         return redirect('dashboard')
+
+#     if request.method == 'POST':
+#         sale_form = SaleForm(request.POST, store=user_store)
+#         item_formset = SaleItemFormSet(request.POST, form_kwargs={'store': user_store})
+
+#         if sale_form.is_valid() and item_formset.is_valid():
+#             sale = sale_form.save(commit=False)
+#             sale.created_by = request.user
+#             sale.store = user_store  # Associate sale with the user's store
+
+#             total_amount = Decimal('0')
+#             sufficient_stock = True
+
+#             with transaction.atomic():
+#                 for item_form in item_formset:
+#                     if item_form.cleaned_data:
+#                         product = item_form.cleaned_data.get('product')
+#                         quantity = item_form.cleaned_data.get('quantity')
+
+#                         if product and quantity:
+#                             if product.quantity < quantity:
+#                                 sufficient_stock = False
+#                                 messages.error(request, f'Insufficient quantity for {product.name}. Only {product.quantity} available.')
+#                                 break
+#                             price = product.selling_price
+#                             total_amount += quantity * price
+
+#                 if sufficient_stock:
+#                     sale.total_amount = total_amount
+#                     sale.final_amount = total_amount - (sale.discount or Decimal('0'))
+#                     sale.save()
+
+#                     for item_form in item_formset:
+#                         if item_form.cleaned_data:
+#                             product = item_form.cleaned_data.get('product')
+#                             quantity = item_form.cleaned_data.get('quantity')
+#                             price = product.selling_price
+#                             SaleItem.objects.create(
+#                                 sale=sale,
+#                                 product=product,
+#                                 quantity=quantity,
+#                                 unit_price=price,
+#                                 total_price=quantity * price
+#                             )
+#                             product.quantity -= quantity
+#                             product.save()
+
+#                     if sale.payment_type == 'credit':
+#                         Debt.objects.create(
+#                             customer=sale.customer,
+#                             sale=sale,
+#                             amount=sale.total_amount,
+#                             remaining_amount=sale.total_amount - sale.discount
+#                         )
+
+#                     messages.success(request, 'Sale recorded successfully!')
+#                     return redirect('view_sale', sale_id=sale.id)
+#         else:
+#             messages.error(request, 'Please correct the errors below.')
+#     else:
+#         sale_form = SaleForm(store=user_store)
+#         item_formset = SaleItemFormSet(form_kwargs={'store': user_store})
+
+#     return render(request, 'add_sale.html', {
+#         'sale_form': sale_form,
+#         'item_formset': item_formset,
+#     })
+@login_required
+def add_sale(request):
+    user_store = Store.objects.filter(owner=request.user).first() or Seller.objects.filter(user=request.user).first().store
 
     if request.method == 'POST':
         sale_form = SaleForm(request.POST, store=user_store)
@@ -284,6 +454,7 @@ def add_sale(request):
                         Debt.objects.create(
                             customer=sale.customer,
                             sale=sale,
+                            store=sale.store,
                             amount=sale.total_amount,
                             remaining_amount=sale.total_amount - sale.discount
                         )
@@ -300,7 +471,8 @@ def add_sale(request):
         'sale_form': sale_form,
         'item_formset': item_formset,
     })
-   
+
+
 @login_required
 def add_sale_items(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
@@ -416,7 +588,7 @@ def add_debt_payment(request, debt_id):
 
 @login_required
 def expense_list(request):
-    user_store = Store.objects.filter(owner=request.user).first()
+    user_store = Store.objects.filter(owner=request.user).first() or Seller.objects.filter(user=request.user).first().store
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
@@ -485,7 +657,7 @@ def expense_list(request):
 
 @login_required
 def add_expense(request):
-    user_store = Store.objects.filter(owner=request.user).first()
+    user_store = Store.objects.filter(owner=request.user).first() or Seller.objects.filter(user=request.user).first().store
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:

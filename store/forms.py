@@ -1,5 +1,7 @@
 # forms.py
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User, Group
 from .models import *
 
 class ProductForm(forms.ModelForm):
@@ -141,3 +143,37 @@ class ExpenseForm(forms.ModelForm):
         # Filter categories based on the store
         self.fields['category'].queryset = ExpenseCategory.objects.filter(store=self.store)
         self.fields['category'].required = False  # Category can be blank if adding a new one
+
+
+class StoreForm(forms.ModelForm):
+    name = forms.CharField(max_length=200, label='Jina la Biashara')
+    address = forms.CharField(widget=forms.Textarea(attrs={'rows': '2'}), label='Mahali')
+    phone_number = forms.CharField(max_length=50, label='Nambari ya Simu')
+    class Meta:
+        model = Store
+        fields = ['name', 'address', 'phone_number']
+
+
+class CreateSellerForm(forms.ModelForm):
+    username = forms.CharField(max_length=150)
+    password = forms.CharField(widget=forms.PasswordInput)
+
+    class Meta:
+        model = Seller
+        fields = ['username', 'password']
+
+    def save(self, commit=True, store=None):
+        # Create the User first
+        user = User.objects.create_user(
+            username=self.cleaned_data['username'],
+            password=self.cleaned_data['password']
+        )
+
+        # Create the Seller profile
+        seller = super().save(commit=False)
+        seller.user = user
+        if store:
+            seller.store = store
+        if commit:
+            seller.save()
+        return seller

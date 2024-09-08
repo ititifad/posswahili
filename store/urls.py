@@ -4,6 +4,11 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('stores/', views.store_list, name='store_list'),
+    path('stores/edit/<int:store_id>/', views.edit_store, name='edit_store'),
+    path('stores/delete/<int:store_id>/', views.delete_store, name='delete_store'),
+    path('store/<int:store_id>/assign_seller/', views.assign_seller, name='assign_seller'),
+    path('store/<int:store_id>/details/', views.store_details, name='store_details'),
     path('products/', views.product_list, name='product_list'),
     path('products/add/', views.add_product, name='add_product'),
     # New URLs for products
