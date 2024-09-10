@@ -4,54 +4,36 @@
 
 {% block content %}
 <div class="container mt-3 mb-4">
+  <h1 class="text-center mb-4">Taarifa ya Matumizi</h1>
+  {% for store in stores %}
+  <div class="card" style="width: 18rem;background-color: #F6F5F2;">
+    <div class="card-header px-5">
+        <a href="{% url 'store_details' store.id %}" class="text-reset">Duka: {{ store.name }}</a>
+    </div>
 
-      <h1 class="text-center">Taarifa ya Matumizi</h1>
-<div class="table-responsive">
-<table class="table align-middle mb-0 bg-success table-bordered table-sm">
-    <thead class="table-success">
-        <tr>
-            <th>#</th>
-            <th>Jina</th>
-            <th>Mmiliki</th>
-            <th>Mahali</th>
-            <th>Namba ya Simu</th>
-            <th>Hariri</th>
-            <th>Futa</th>
-            <th>Sajili Muuzaji</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for store in stores %}
-        <tr>
-            <td>{{forloop.counter}}</td>
-            <td><a href="{% url 'store_details' store.id %}">{{ store.name }}</a></td>
-            <td>{{ store.owner }}</td>
-            <td>{{ store.address }}</td>
-            <td>{{ store.phone_number }}</td>
-            
-            <td>
-                <a href="{% url 'edit_store' store.id %}" class="btn btn-warning btn-sm rounded-pill me-2">Hariri</a>
-                
-            </td>
-            <td>
-                <a href="{% url 'delete_store' store.id %}" class="btn btn-danger btn-sm rounded-pill me-2">Futa</a>
-            </td>
-            <td>
-                <a href="{% url 'assign_seller' store.id %}" class="btn btn-primary btn-sm rounded-pill me-2">Sajili</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-</div>
+    <ul class="list-group list-group-light list-group-small">
+      <li class="list-group-item px-5">Mmiliki: {{ store.owner }}</li>
+      <li class="list-group-item px-5">Mahali: {{ store.address }}</li>
+      <li class="list-group-item px-5">Namba ya Simu: {{ store.phone_number }}</li>
+    </ul>
+    <div class="card-footer bg-body-tertiary px-3">
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'edit_store' store.id %}" class="btn btn-warning btn-sm rounded-pill">Hariri</a>
+            <a href="{% url 'delete_store' store.id %}" class="btn btn-danger btn-sm rounded-pill">Futa</a>
+            <a href="{% url 'store_details' store.id %}" class="btn btn-primary btn-sm rounded-pill">Tazama</a>
+          </div>
+    </div>
+  </div>
+  {% endfor %}
+  
 </div>
 
 <script>
-    // Initialize Select2 for the custom select menu
-    $(document).ready(function() {
-      $('#selectedProducts').select2();
-    });
-    
-    // Rest of your JavaScript code...
-  </script>
+  // Initialize Select2 for the custom select menu
+  $(document).ready(function() {
+    $('#selectedProducts').select2();
+  });
+  
+  // Rest of your JavaScript code...
+</script>
 {% endblock %}

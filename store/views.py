@@ -16,7 +16,7 @@ from .models import *
 from .forms import *
 from django.utils import timezone
 from datetime import date, timedelta, datetime
-
+import calendar
 
 
 @login_required
@@ -30,31 +30,52 @@ def dashboard(request):
 
     # Today's date
     today = date.today()
-    
-    # Filter sales and expenses by the user's store
-    today_sales_total = Sale.objects.filter(store=user_store, date=today).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
-    all_time_sales_total = Sale.objects.filter(store=user_store).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0
-    
-    today_purchase_total = SaleItem.objects.filter(sale__store=user_store, sale__date=today, is_fully_refunded=False).aggregate(
-        total_purchase=Sum(F('product__purchase_price') * F('quantity'))
-    )['total_purchase'] or 0
-    
-    all_time_purchase_total = SaleItem.objects.filter(sale__store=user_store, is_fully_refunded=False).aggregate(
-        total_purchase=Sum(F('product__purchase_price') * F('quantity'))
-    )['total_purchase'] or 0
-    
+
+    # Filter sales by the user's store, excluding fully refunded items
+    today_sales_total = Sale.objects.filter(
+        store=user_store, date=today
+    ).aggregate(total_sales=Sum('final_amount'))['total_sales'] or Decimal('0')
+
+    all_time_sales_total = Sale.objects.filter(
+        store=user_store
+    ).aggregate(total_sales=Sum('final_amount'))['total_sales'] or Decimal('0')
+
+    # Calculate total purchase cost for today using purchase_price_at_sale
+    today_purchase_total = SaleItem.objects.filter(
+        sale__store=user_store, sale__date=today, is_fully_refunded=False
+    ).aggregate(
+        total_purchase=Sum(F('purchase_price_at_sale') * F('quantity'))
+    )['total_purchase'] or Decimal('0')
+
+    # Calculate total purchase cost for all time
+    all_time_purchase_total = SaleItem.objects.filter(
+        sale__store=user_store, is_fully_refunded=False
+    ).aggregate(
+        total_purchase=Sum(F('purchase_price_at_sale') * F('quantity'))
+    )['total_purchase'] or Decimal('0')
+
+    # Calculate today's profit
     today_profit = today_sales_total - today_purchase_total
+
+    # Calculate all-time profit
     all_time_profit = all_time_sales_total - all_time_purchase_total
-    
-    today_expenses_total = Expense.objects.filter(store=user_store, date__date=today).aggregate(
+
+    # Today's expenses
+    today_expenses_total = Expense.objects.filter(
+        store=user_store, date__date=today
+    ).aggregate(
         total_expenses=Sum('amount')
-    )['total_expenses'] or 0
-    all_time_expenses_total = Expense.objects.filter(store=user_store).aggregate(
+    )['total_expenses'] or Decimal('0')
+
+    # All-time expenses
+    all_time_expenses_total = Expense.objects.filter(
+        store=user_store
+    ).aggregate(
         total_expenses=Sum('amount')
-    )['total_expenses'] or 0
+    )['total_expenses'] or Decimal('0')
 
     context = {
-        'user_store':user_store,
+        'user_store': user_store,
         'today_sales_total': today_sales_total,
         'all_time_sales_total': all_time_sales_total,
         'today_purchase_total': today_purchase_total,
@@ -80,6 +101,7 @@ def store_list(request):
         messages.error(request, 'Huna duka.')
         return redirect('dashboard')
     stores = Store.objects.filter(owner=request.user)
+    
     return render(request, 'store_list.html', {'stores': stores})
 
 @login_required
@@ -155,7 +177,96 @@ def user_redirect(request):
 def store_details(request, store_id):
     store = get_object_or_404(Store, id=store_id, owner=request.user)
     sellers = store.sellers.all()
-    return render(request, 'store_details.html', {'store': store, 'sellers': sellers})
+    # Sales data
+    total_sales = float(Sale.objects.filter(store=store).aggregate(total_sales=Sum('final_amount'))['total_sales'] or 0)
+    today_sales = float(Sale.objects.filter(store=store, date=datetime.today().date()).aggregate(today_sales=Sum('final_amount'))['today_sales'] or 0)
+    
+    # Expenses data
+    total_expenses = float(Expense.objects.filter(store=store).aggregate(total_expenses=Sum('amount'))['total_expenses'] or 0)
+    today_expenses = float(Expense.objects.filter(store=store, date__date=datetime.today().date()).aggregate(today_expenses=Sum('amount'))['today_expenses'] or 0)
+
+    # Debt data
+    total_debts = float(Debt.objects.filter(store=store).aggregate(total_debts=Sum('remaining_amount'))['total_debts'] or 0)
+
+    # Weekly sales chart data (last 7 days)
+    last_week = datetime.today() - timedelta(days=7)
+    weekly_sales = Sale.objects.filter(store=store, date__gte=last_week).values('date').annotate(total_sales=Sum('final_amount'))
+
+    # Convert Decimal values to float for compatibility with JS
+    weekly_sales_labels = [sale['date'].strftime('%Y-%m-%d') for sale in weekly_sales]
+    weekly_sales_data = [float(sale['total_sales']) for sale in weekly_sales]
+
+    # Days with the most sales (top 7 days by sales amount)
+    top_sales_days = Sale.objects.filter(store=store).values('date').annotate(total_sales=Sum('final_amount')).order_by('-total_sales')[:7]
+
+    # Convert dates to day names
+    top_sales_days_labels = [calendar.day_name[day['date'].weekday()] for day in top_sales_days]
+    top_sales_days_data = [float(day['total_sales']) for day in top_sales_days]
+    # Sales grouped by products (for product-based sales analysis)
+    product_sales = SaleItem.objects.filter(sale__store=store).values('product__name').annotate(total_sold=Sum('quantity')).order_by('-total_sold')[:10]
+
+    top_products = SaleItem.objects.filter(sale__store=store).values('product__name').annotate(
+        total_quantity=Sum('quantity'),
+        total_revenue=Sum('total_price')
+    ).order_by('-total_quantity')[:10]  # Top 10 products
+
+    refunds = SaleItem.objects.filter(sale__store=store, refunded_quantity__gt=0).values(
+        'product__name', 'refund_reason'
+    ).annotate(
+        total_refunded=Sum(F('unit_price') * F('refunded_quantity')),
+        total_quantity_refunded=Sum('refunded_quantity')
+    )
+
+    # Get debts with the sale date and remaining amount
+    debts = Debt.objects.filter(store=store, remaining_amount__gt=0).values(
+        'customer__name', 'remaining_amount', 'sale__date'
+    )
+    
+    # Calculate the debt age manually in Python
+    for debt in debts:
+        debt_date = debt['sale__date']
+        debt['debt_age'] = (datetime.now().date() - debt_date).days  # Calculate days since the sale
+
+
+    today = date.today()
+
+    # Total revenue (sales)
+    total_revenue = Sale.objects.filter(store=store).aggregate(total=Sum('final_amount'))['total'] or 0
+
+    # COGS
+    cogs = SaleItem.objects.filter(sale__store=store, is_fully_refunded=False).aggregate(
+        total_cogs=Sum(F('purchase_price_at_sale') * F('quantity'))
+    )['total_cogs'] or 0
+
+    # Total expenses
+    total_expenses = Expense.objects.filter(store=store).aggregate(total=Sum('amount'))['total'] or 0
+
+    net_profit = total_revenue - cogs - total_expenses
+
+
+    context = {
+        'store': store,
+        'total_sales': total_sales,
+        'today_sales': today_sales,
+        'total_expenses': total_expenses,
+        'today_expenses': today_expenses,
+        'total_debts': total_debts,
+        'weekly_sales': weekly_sales,
+        'weekly_sales_labels': weekly_sales_labels,
+        'weekly_sales_data': weekly_sales_data,
+        'top_sales_days':top_sales_days,
+        'product_sales': product_sales,
+        'sellers': sellers,
+        'top_products': top_products,
+        'refunds': refunds,
+        'debts':debts,
+        'total_revenue': total_revenue,
+        'cogs': cogs,
+        'top_sales_days_labels': top_sales_days_labels,
+        'top_sales_days_data': top_sales_days_data,
+        'net_profit': net_profit,
+    }
+    return render(request, 'store_details.html', context)
 
 @login_required
 def product_list(request):
@@ -400,7 +511,78 @@ def sale_list(request):
 #         'sale_form': sale_form,
 #         'item_formset': item_formset,
 #     })
-@login_required
+# @login_required
+# def add_sale(request):
+#     user_store = Store.objects.filter(owner=request.user).first() or Seller.objects.filter(user=request.user).first().store
+
+#     if request.method == 'POST':
+#         sale_form = SaleForm(request.POST, store=user_store)
+#         item_formset = SaleItemFormSet(request.POST, form_kwargs={'store': user_store})
+
+#         if sale_form.is_valid() and item_formset.is_valid():
+#             sale = sale_form.save(commit=False)
+#             sale.created_by = request.user
+#             sale.store = user_store  # Associate sale with the user's store
+
+#             total_amount = Decimal('0')
+#             sufficient_stock = True
+
+#             with transaction.atomic():
+#                 for item_form in item_formset:
+#                     if item_form.cleaned_data:
+#                         product = item_form.cleaned_data.get('product')
+#                         quantity = item_form.cleaned_data.get('quantity')
+
+#                         if product and quantity:
+#                             if product.quantity < quantity:
+#                                 sufficient_stock = False
+#                                 messages.error(request, f'Insufficient quantity for {product.name}. Only {product.quantity} available.')
+#                                 break
+#                             price = product.selling_price
+#                             total_amount += quantity * price
+
+#                 if sufficient_stock:
+#                     sale.total_amount = total_amount
+#                     sale.final_amount = total_amount - (sale.discount or Decimal('0'))
+#                     sale.save()
+
+#                     for item_form in item_formset:
+#                         if item_form.cleaned_data:
+#                             product = item_form.cleaned_data.get('product')
+#                             quantity = item_form.cleaned_data.get('quantity')
+#                             price = product.selling_price
+#                             SaleItem.objects.create(
+#                                 sale=sale,
+#                                 product=product,
+#                                 quantity=quantity,
+#                                 unit_price=price,
+#                                 total_price=quantity * price
+#                             )
+#                             product.quantity -= quantity
+#                             product.save()
+
+#                     if sale.payment_type == 'credit':
+#                         Debt.objects.create(
+#                             customer=sale.customer,
+#                             sale=sale,
+#                             store=sale.store,
+#                             amount=sale.total_amount,
+#                             remaining_amount=sale.total_amount - sale.discount
+#                         )
+
+#                     messages.success(request, 'Sale recorded successfully!')
+#                     return redirect('view_sale', sale_id=sale.id)
+#         else:
+#             messages.error(request, 'Please correct the errors below.')
+#     else:
+#         sale_form = SaleForm(store=user_store)
+#         item_formset = SaleItemFormSet(form_kwargs={'store': user_store})
+
+#     return render(request, 'add_sale.html', {
+#         'sale_form': sale_form,
+#         'item_formset': item_formset,
+#     })
+
 def add_sale(request):
     user_store = Store.objects.filter(owner=request.user).first() or Seller.objects.filter(user=request.user).first().store
 
@@ -411,7 +593,7 @@ def add_sale(request):
         if sale_form.is_valid() and item_formset.is_valid():
             sale = sale_form.save(commit=False)
             sale.created_by = request.user
-            sale.store = user_store  # Associate sale with the user's store
+            sale.store = user_store
 
             total_amount = Decimal('0')
             sufficient_stock = True
@@ -440,12 +622,16 @@ def add_sale(request):
                             product = item_form.cleaned_data.get('product')
                             quantity = item_form.cleaned_data.get('quantity')
                             price = product.selling_price
+
+                            # Create sale item and lock prices at the time of sale
                             SaleItem.objects.create(
                                 sale=sale,
                                 product=product,
                                 quantity=quantity,
                                 unit_price=price,
-                                total_price=quantity * price
+                                total_price=quantity * price,
+                                purchase_price_at_sale=product.purchase_price,
+                                selling_price_at_sale=price
                             )
                             product.quantity -= quantity
                             product.save()
@@ -471,6 +657,7 @@ def add_sale(request):
         'sale_form': sale_form,
         'item_formset': item_formset,
     })
+
 
 
 @login_required

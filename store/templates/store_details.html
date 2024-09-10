@@ -1,17 +1,358 @@
 {% extends 'base.html' %}
-
+{% load humanize %}
 {% block content %}
-<div class="container">
-  <h2>Dashboard for {{ store.name }}</h2>
-  <h3>Sellers:</h3>
-  <ul>
-    {% for seller in sellers %}
-      <li>{{ seller.user.username }}</li>
-    {% empty %}
-      <li>No sellers yet.</li>
-    {% endfor %}
+<div class="container mt-5">
+  <h2 class="mb-4">Dashbodi: {{ store.name }}</h2>
+
+  <!-- Tabs navigation -->
+  <ul class="nav nav-tabs mb-3" id="dashboardTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="overview-tab" data-mdb-toggle="tab" data-mdb-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">muhtasari</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="sellers-tab" data-mdb-toggle="tab" data-mdb-target="#sellers" type="button" role="tab" aria-controls="sellers" aria-selected="false">Wauzaji</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="sales-tab" data-mdb-toggle="tab" data-mdb-target="#sales" type="button" role="tab" aria-controls="sales" aria-selected="false">Mauzo</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="products-tab" data-mdb-toggle="tab" data-mdb-target="#products" type="button" role="tab" aria-controls="products" aria-selected="false">Bidhaa</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="refunds-tab" data-mdb-toggle="tab" data-mdb-target="#refunds" type="button" role="tab" aria-controls="refunds" aria-selected="false">Refunds</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="debts-tab" data-mdb-toggle="tab" data-mdb-target="#debts" type="button" role="tab" aria-controls="debts" aria-selected="false">Madeni</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="finances-tab" data-mdb-toggle="tab" data-mdb-target="#finances" type="button" role="tab" aria-controls="finances" aria-selected="false">Mapato</button>
+    </li>
   </ul>
-  <a href="{% url 'assign_seller' store.id %}" class="btn btn-primary">Add New Seller</a>
-  <a href="{% url 'add_sale' %}" class="btn btn-success">Add Sale</a>
+
+  <!-- Tabs content -->
+  <div class="tab-content" id="dashboardTabsContent">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+      <div class="row">
+        <div class="col-md-4 mb-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Muhtasari wa Mauzo</h5>
+              <p class="card-text">Jumla ya Mauzo: {{ total_sales|intcomma }}</p>
+              <p class="card-text">Mauzo ya Leo: {{ today_sales|intcomma }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Muhtasari wa Matumizi</h5>
+              <p class="card-text">Jumla ya Matumizi: {{ total_expenses|intcomma }}</p>
+              <p class="card-text">Matumizi ya Leo: {{ today_expenses|intcomma }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Muhtasari wa Madeni</h5>
+              <p class="card-text">Jumla Madeni: {{ total_debts|intcomma }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+  <!-- Days with the Most Sales Table -->
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Siku zenye Mauzo Zaidi</h5>
+      <div class="table-responsive">
+  <table class="table">
+      <thead>
+          <tr>
+              <th>Siku</th>
+              <th>Mauzo (TZS)</th>
+          </tr>
+      </thead>
+      <tbody>
+        {% for day in top_sales_days %}
+          <tr>
+            <td>{{ day.date|date:"l" }}</td>
+            <td>{{ day.total_sales|intcomma }}</td>
+          </tr>
+          {% endfor %}
+      </tbody>
+  </table>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+  
+    <div class="row">
+        <!-- Weekly Sales Chart Card -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Chati ya Mauzo ya Kila Wiki</h5>
+                    <div class="chart-container" style="position: relative; height:40vh; width:100%;">
+                        <canvas id="weeklySalesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Days with the Most Sales Chart Card -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Chati Siku zenye Mauzo Zaidi</h5>
+                    <div class="chart-container" style="position: relative; height:40vh; width:100%;">
+                        <canvas id="topSalesDaysChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+    <!-- Sellers Tab -->
+    <div class="tab-pane fade" id="sellers" role="tabpanel" aria-labelledby="sellers-tab">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Wauzaji</h5>
+          <ul class="list-group list-group-flush">
+            {% for seller in sellers %}
+              <li class="list-group-item">{{ seller.user.username }}</li>
+            {% empty %}
+              <li class="list-group-item">No sellers yet.</li>
+            {% endfor %}
+          </ul>
+          <div class="mt-3">
+            <a href="{% url 'assign_seller' store.id %}" class="btn btn-primary">Add New Seller</a>
+            <a href="{% url 'add_sale' %}" class="btn btn-success">Add Sale</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales Tab -->
+    <div class="tab-pane fade" id="sales" role="tabpanel" aria-labelledby="sales-tab">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Bidhaa 10 Bora Zinatoka sana</h5>
+          <ul class="list-group list-group-flush">
+            {% for product in product_sales %}
+              <li class="list-group-item">{{ product.product__name }} - {{ product.total_sold }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Tab -->
+    <div class="tab-pane fade" id="products" role="tabpanel" aria-labelledby="products-tab">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Bidhaa Zinazouzwa Zaidi</h5>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Bidhaa</th>
+                  <th>Idadi</th>
+                  <th>Jumla Mauzo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for product in top_products %}
+                <tr>
+                  <td>{{ product.product__name }}</td>
+                  <td>{{ product.total_quantity }}</td>
+                  <td>{{ product.total_revenue|intcomma }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Refunds Tab -->
+    <div class="tab-pane fade" id="refunds" role="tabpanel" aria-labelledby="refunds-tab">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Uchambuzi wa Marejesho</h5>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Bidhaa</th>
+                  <th>Sababu</th>
+                  <th>Idadi</th>
+                  <th>kiasi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for refund in refunds %}
+                <tr>
+                  <td>{{ refund.product__name }}</td>
+                  <td>{{ refund.refund_reason }}</td>
+                  <td>{{ refund.total_quantity_refunded }}</td>
+                  <td>{{ refund.total_refunded|intcomma }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debts Tab -->
+    <div class="tab-pane fade" id="debts" role="tabpanel" aria-labelledby="debts-tab">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Madeni ya Wateja</h5>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Mteja</th>
+                  <th>kiasi kilichobaki</th>
+                  <th>Umri wa deni (siku)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for debt in debts %}
+                <tr>
+                  <td>{{ debt.customer__name }}</td>
+                  <td>{{ debt.remaining_amount|intcomma }}</td>
+                  <td>{{ debt.debt_age }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Finances Tab -->
+    <div class="tab-pane fade" id="finances" role="tabpanel" aria-labelledby="finances-tab">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Taarifa ya Faida na Hasara</h5>
+          <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+              <tbody>
+                <tr><th>Jumla ya Mapato</th><td>{{ total_revenue|intcomma }}</td></tr>
+                <tr><th>Jumla manunuzi</th><td>{{ cogs|intcomma }}</td></tr>
+                <tr><th>Jumla Matumizi</th><td>{{ total_expenses|intcomma }}</td></tr>
+                <tr><th>Faida halisi</th><td>{{ net_profit|intcomma }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Initialize MDBootstrap tabs
+  document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('#dashboardTabs .nav-link');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', function(event) {
+        event.preventDefault();
+        tabs.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        const target = document.querySelector(this.getAttribute('data-mdb-target'));
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('show', 'active'));
+        target.classList.add('show', 'active');
+      });
+    });
+  });
+  var ctx = document.getElementById('weeklySalesChart').getContext('2d');
+        var weeklySalesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ weekly_sales_labels|safe }},
+                datasets: [{
+                    label: 'Weekly Sales',
+                    data: {{ weekly_sales_data|safe }},
+                    backgroundColor: [
+                    "#F7EFE5",
+                    "#E2BFD9",
+                    "#F7C600",
+                    "#F2103B",
+                    ],
+                    borderColor: 'transparent',
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                animations: {
+      tension: {
+        duration: 1000,
+        easing: 'linear',
+        from: 1,
+        to: 0,
+        loop: true
+      }
+    },
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+</script>
+
+<!-- Top Sales Days Chart -->
+<script>
+    var ctxTopSales = document.getElementById('topSalesDaysChart').getContext('2d');
+    var topSalesDaysChart = new Chart(ctxTopSales, {
+        type: 'bar',
+        data: {
+            labels: {{ top_sales_days_labels|safe }},
+            datasets: [{
+                label: 'Top Sales Days',
+                data: {{ top_sales_days_data|safe }},
+                backgroundColor: [
+                    "#D2E0FB",
+                    "#8EACCD",
+                    "#DEE5D4",
+                    "#8EACCD",
+                    ],
+                borderColor: 'transparent',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    beginAtZero: true
+                },
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
 {% endblock %}

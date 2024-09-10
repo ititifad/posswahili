@@ -100,16 +100,27 @@ class SaleItem(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-
     # New fields to handle refunds
     refunded_quantity = models.PositiveIntegerField(default=0)
     refund_reason = models.CharField(max_length=255, null=True, blank=True)
     is_fully_refunded = models.BooleanField(default=False)
 
+        # New fields to store prices at the time of sale
+    purchase_price_at_sale = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    selling_price_at_sale = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+
     def __str__(self):
         return f"{self.product.name} - {self.quantity}"
 
+    # def save(self, *args, **kwargs):
+    #     self.total_price = self.quantity * self.unit_price
+    #     super().save(*args, **kwargs)
+
     def save(self, *args, **kwargs):
+        # Store the price at the time of sale
+        self.purchase_price_at_sale = self.product.purchase_price
+        self.selling_price_at_sale = self.product.selling_price
         self.total_price = self.quantity * self.unit_price
         super().save(*args, **kwargs)
 
