@@ -17,34 +17,51 @@
     border-color: #f5c6cb;      /* Slightly darker red border */
     color: #721c24;             /* Dark red text */
 }
-
+.form-select, .form-control {
+        height: 38px;
+    }
+    .btn-floating {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border-radius: 50%;
+        
+    }
+    @media (max-width: 767.98px) {
+        .item-form .row > div:not(:last-child) {
+            margin-bottom: 0.2rem;
+        }
+    }
 </style>
 
 <div class="container my-3">
+ 
+    <div class="row justify-content-center">
+        <div class="col-md-7">
     <div class="card shadow-sm">
         <div class="card-body">
-            <h1 class="card-title text-center mb-4">Rekodi Mauzo</h1>
+            
             <form method="post" class="needs-validation" novalidate>
                 {% csrf_token %}
                 
-                <div class="mb-4">
-                    <h2 class="h4 mb-3">Mteja (si lazima)</h2>
+                <div class="mb-2">
+                    <h5 class="mb-3">Mteja (si lazima)</h5>
                     {{ sale_form.customer|as_crispy_field }}
                 </div>
                 
-                <div class="mb-4">
-                    <h2 class="h4 mb-3">Tarehe ya mauzo</h2>
+                <div class="mb-2">
+                    <h5 class="mb-3">Tarehe ya mauzo</h5>
                     {{ sale_form.date|as_crispy_field }}
                 </div>
                 
                 <div class="mb-4">
-                    <h2 class="h4 mb-3">Bidhaa za oda</h2>
+                    <h2 class="h4">Bidhaa za oda</h2>
                     {{ item_formset.management_form }}
-                    <div id="item-formset" class="mb-3">
+                    <div id="item-formset" class="mb-2">
                         {% for form in item_formset %}
-                        <div class="item-form row align-items-end">
-                            <div class="col">
-                                <!-- Custom select tag for products -->
+                        <div class="item-form row align-items-center mb-3">
+                            <div class="col-6 col-md-5">
+                                <!-- Product select dropdown -->
                                 <select name="form-{{ forloop.counter0 }}-product" class="form-control select2">
                                     {% for product in form.fields.product.queryset %}
                                         <option value="{{ product.id }}" {% if form.product.value == product.id %}selected{% endif %}>
@@ -53,10 +70,12 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col">
+                            <div class="col-4 col-md-5">
+                                <!-- Quantity input -->
                                 {{ form.quantity|as_crispy_field }}
                             </div>
-                            <div class="col-auto">
+                            <div class="col-2 col-md-2 text-center">
+                                <!-- Trash icon for removing item -->
                                 <button type="button" class="btn btn-sm btn-danger remove-item">
                                     <i class="fa fa-trash" aria-hidden="true"></i>
                                 </button>
@@ -65,19 +84,19 @@
                         {% endfor %}
                     </div>
                     <button type="button" id="add-item" class="btn btn-success">
-                        <i class="fa fa-plus" aria-hidden="true"></i>
+                        <i class="fa fa-plus" aria-hidden="true"></i> Ongeza Bidhaa
                     </button>
                 </div>
                 
-                <div class="mb-4">
-                    <h2 class="h4 mb-3">Weka discount (Punguzo)</h2>
+                <div class="mb-2">
+                    <h5 class="mb-3">Weka discount (Punguzo)</h5>
                     {{ sale_form.discount|as_crispy_field }}
                 </div>
                 
                 
                 
-                <div class="mb-4">
-                    <h2 class="h4 mb-3">Aina ya malipo</h2>
+                <div class="mb-2">
+                    <h5 class="mb-3">Aina ya malipo</h5>
                     {{ sale_form.payment_type|as_crispy_field }}
                 </div>
                 
@@ -87,12 +106,21 @@
             </form>
         </div>
     </div>
+        </div>
+    </div>
 </div>
 
 <script>
     $(document).ready(function() {
-        // Initialize Select2 on existing product fields
-        $('.select2').select2();
+        // Function to initialize Select2 for all select elements with the class 'select2'
+        function initializeSelect2() {
+            $('.select2').select2({
+                width: '100%' // Ensures proper width for the select2 dropdown
+            });
+        }
+
+        // Initialize Select2 on page load
+        initializeSelect2();
 
         // Add new item form and initialize Select2
         $('#add-item').click(function() {
@@ -102,14 +130,15 @@
             // Clear the values in the cloned form
             newForm.find('select').val(null).trigger('change'); // Reset the select2 field
             newForm.find('input[type="number"]').val(''); // Reset quantity input
-            
+
             // Update the form indices
             newForm.html(newForm.html().replace(/form-(\d+)-/g, 'form-' + formCount + '-'));
             $('#item-formset').append(newForm);
             $('#id_form-TOTAL_FORMS').val(formCount + 1);
 
-            // Reinitialize Select2 on the new product field
-            newForm.find('.select2').select2();
+            // Remove the previously initialized Select2 and reinitialize
+            newForm.find('.select2-container').remove(); // Remove any Select2 wrapper elements
+            initializeSelect2(); // Reinitialize Select2 on the new form
         });
 
         // Remove item form
@@ -121,4 +150,6 @@
         });
     });
 </script>
+
+
 {% endblock %}

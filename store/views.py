@@ -98,7 +98,7 @@ def store_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     stores = Store.objects.filter(owner=request.user)
     
@@ -112,7 +112,7 @@ def edit_store(request, store_id):
         form = StoreForm(request.POST, instance=store)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Store details updated successfully!')
+            messages.success(request, 'Taarifa za duka zimehaririwa kikamilifu!')
             return redirect('store_list')
     else:
         form = StoreForm(instance=store)
@@ -125,7 +125,7 @@ def delete_store(request, store_id):
     
     if request.method == 'POST':
         store.delete()
-        messages.success(request, 'Store deleted successfully!')
+        messages.success(request, 'Duka Limefutwa kikamilifu!')
         return redirect('store_list')
     
     return render(request, 'delete_store.html', {'store': store})
@@ -159,7 +159,7 @@ def assign_seller(request, store_id):
         form = CreateSellerForm(request.POST)
         if form.is_valid():
             form.save(store=store)
-            messages.success(request, 'Seller has been assigned successfully!')
+            messages.success(request, 'Muuzaji amesajiliwa kikamilifu!')
             return redirect('store_list')
     else:
         form = CreateSellerForm()
@@ -275,7 +275,7 @@ def product_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     # Initial query
     products = Product.objects.filter(store=user_store).order_by('-id')
@@ -329,7 +329,7 @@ def add_product(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
 
     if request.method == 'POST':
@@ -365,7 +365,7 @@ def sale_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     
     # Get query parameters for filters
@@ -645,10 +645,10 @@ def add_sale(request):
                             remaining_amount=sale.total_amount - sale.discount
                         )
 
-                    messages.success(request, 'Sale recorded successfully!')
+                    messages.success(request, 'Mauzo yamerekodiwa kikamilifu!')
                     return redirect('view_sale', sale_id=sale.id)
         else:
-            messages.error(request, 'Please correct the errors below.')
+            messages.error(request, 'Tafadhali sahihisha makosa yaliyojitokeza.')
     else:
         sale_form = SaleForm(store=user_store)
         item_formset = SaleItemFormSet(form_kwargs={'store': user_store})
@@ -700,7 +700,7 @@ def debt_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     # Get query parameters for filters
     customer_id = request.GET.get('customer')
@@ -779,7 +779,7 @@ def expense_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     # Get query parameters for filters
     category_id = request.GET.get('category')
@@ -848,7 +848,7 @@ def add_expense(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
 
     if request.method == 'POST':
@@ -882,7 +882,7 @@ def customer_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     # Fetch query parameters from the request
     customer_name = request.GET.get('customer_name', '')
@@ -924,7 +924,7 @@ def add_customer(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
 
     if request.method == 'POST':
@@ -947,7 +947,7 @@ def creditor_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     creditors = Creditor.objects.filter(store=user_store)
     return render(request, 'creditor_list.html', {'creditors': creditors})
@@ -958,7 +958,7 @@ def add_creditor(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     
     if request.method == 'POST':
@@ -981,7 +981,7 @@ def credit_list(request):
 
     # If the user doesn't own a store, redirect or return a message
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
     
     # Get filter parameters from request
@@ -1048,7 +1048,7 @@ def add_credit(request):
     user_store = Store.objects.filter(owner=request.user).first()
 
     if not user_store:
-        messages.error(request, 'Huna duka.')
+        messages.error(request, 'Haumiliki duka kwa sasa.')
         return redirect('dashboard')
 
     if request.method == 'POST':
